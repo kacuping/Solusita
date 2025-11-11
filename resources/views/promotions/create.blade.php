@@ -75,6 +75,17 @@
                     </div>
                     <div class="form-group col-md-6">
                         <label>Segmentasi Pelanggan (Sederhana)</label>
+                        <div class="mb-2">
+                            <label class="mb-1">Preset Segmentasi</label>
+                            <select id="sr_preset" class="form-control form-control-sm">
+                                <option value="">— Pilih preset —</option>
+                                <option value="all">Semua pelanggan</option>
+                                <option value="new_customer">Pelanggan baru (belum pernah memesan)</option>
+                                <option value="new_account_7">Akun baru ≤ 7 hari</option>
+                                <option value="loyal_5">Pelanggan loyal ≥ 5 pesanan</option>
+                                <option value="old_account_30">Akun lama ≥ 30 hari</option>
+                            </select>
+                        </div>
                         <div class="border p-2 rounded">
                             <div class="form-check mb-2">
                                 <input type="checkbox" class="form-check-input" id="sr_new_customer" name="sr_new_customer" value="1" {{ old('sr_new_customer') ? 'checked' : '' }}>
@@ -103,7 +114,7 @@
                                 </div>
                             </div>
                         </div>
-                        <small class="text-muted d-block mt-1">Gunakan builder di atas untuk segmentasi umum tanpa perlu JSON.</small>
+                        <small class="text-muted d-block mt-1">Gunakan builder di atas untuk segmentasi umum tanpa perlu JSON. Preset dapat dipilih untuk mengisi otomatis.</small>
                     </div>
                 </div>
 
@@ -119,6 +130,45 @@
                     <button type="submit" class="btn btn-primary">Simpan</button>
                 </div>
             </form>
+            <script>
+                (function(){
+                    const presetEl = document.getElementById('sr_preset');
+                    if(!presetEl) return;
+                    const elNew = document.getElementById('sr_new_customer');
+                    const elAgeMode = document.querySelector('[name="sr_age_mode"]');
+                    const elAgeDays = document.querySelector('[name="sr_age_days"]');
+                    const elMinBookings = document.querySelector('[name="sr_min_past_bookings"]');
+
+                    function applyPreset(val){
+                        // reset defaults
+                        if(elNew) elNew.checked = false;
+                        if(elAgeMode) elAgeMode.value = 'max';
+                        if(elAgeDays) elAgeDays.value = '';
+                        if(elMinBookings) elMinBookings.value = '';
+
+                        switch(val){
+                            case 'all':
+                                // no rules
+                                break;
+                            case 'new_customer':
+                                if(elNew) elNew.checked = true;
+                                break;
+                            case 'new_account_7':
+                                if(elAgeMode) elAgeMode.value = 'max';
+                                if(elAgeDays) elAgeDays.value = 7;
+                                break;
+                            case 'loyal_5':
+                                if(elMinBookings) elMinBookings.value = 5;
+                                break;
+                            case 'old_account_30':
+                                if(elAgeMode) elAgeMode.value = 'min';
+                                if(elAgeDays) elAgeDays.value = 30;
+                                break;
+                        }
+                    }
+                    presetEl.addEventListener('change', function(e){ applyPreset(e.target.value); });
+                })();
+            </script>
         </div>
     </div>
 @stop
