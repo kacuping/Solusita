@@ -50,8 +50,10 @@ jobs:
           # Hostinger Anda hanya membuka port 21, gunakan protocol FTP plain
           port: ${{ secrets.FTP_PORT }}
           protocol: ftp
-          # Sesuaikan path ini jika root FTP Anda langsung berada di public_html/
-          server-dir: "/domains/luasbidang.com/public_html/solusita/"
+          # Akun FTP ini memiliki root di public_html (sesuai hPanel), jadi path tujuan relatif dari sana
+          # Jika subdomain disimpan di public_html/solusita/, cukup gunakan /solusita/
+          # Jika root Anda berbeda, ubah sesuai kebutuhan.
+          server-dir: "/solusita/"
           local-dir: "./"
           exclude: |
             **/.git*
