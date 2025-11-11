@@ -44,6 +44,7 @@
         .promo { display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; }
         .promo .chip { flex:0 0 auto; background: var(--card); border-radius: 14px; padding: 10px 12px; box-shadow: var(--shadow); font-size: 13px; }
         .warning { margin: 10px 16px; color: #b45309; background: #fff7ed; border: 1px solid #fde68a; border-radius: 12px; padding: 10px; }
+        .view-all { display:block; text-align:center; margin: 12px 4px; background: var(--primary); color:#fff; border-radius:12px; padding:10px; text-decoration:none; box-shadow: var(--shadow); }
     </style>
 </head>
 <body>
@@ -103,6 +104,7 @@
                 <div class="tile" style="grid-column: span 3;">Belum ada layanan.</div>
             @endforelse
         </div>
+        <a class="view-all" href="{{ route('customer.services.index') }}">Lihat Semua Layanan</a>
 
         <div class="section-title" style="margin-top: 22px">Petugas Terbaik</div>
         <div class="list">
