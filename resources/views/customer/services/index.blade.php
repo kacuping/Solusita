@@ -23,32 +23,18 @@
             <div class="title">Semua Layanan</div>
         </div>
         <div class="content">
-            @php
-                $defaultIcons = [
-                    'General' => 'fa-broom',
-                    'Karpet' => 'fa-rug',
-                    'Sofa' => 'fa-couch',
-                    'AC' => 'fa-fan',
-                    'Dapur' => 'fa-utensils',
-                    'Kamar Mandi' => 'fa-shower',
-                    'Lantai' => 'fa-broom',
-                ];
-            @endphp
             <div class="grid">
                 @forelse($services as $service)
-                    @php
-                        $iconClass = $service->icon ?? ($defaultIcons[$service->category] ?? 'fa-broom');
-                    @endphp
                     <a class="tile" href="{{ route('customer.service.show', $service->slug) }}">
-                        <div class="icon"><i class="fa {{ $iconClass }}"></i></div>
+                        <div class="icon"><i class="fa {{ $service->display_icon }}"></i></div>
                         <div>{{ $service->name }}</div>
                     </a>
                 @empty
                     <div class="tile" style="grid-column: span 3;">Belum ada layanan.</div>
                 @endforelse
             </div>
+            <a href="{{ route('customer.home') }}" class="tile" style="grid-column: span 3; margin-top:12px; background:#eef3ff; color:#2a57c4;">Kembali ke Beranda</a>
         </div>
     </div>
 </body>
 </html>
-
