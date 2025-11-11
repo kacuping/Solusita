@@ -74,11 +74,44 @@
                         @error('usage_limit')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-group col-md-6">
-                        <label for="segment_rules">Aturan Segmentasi Pelanggan (JSON)</label>
-                        <textarea name="segment_rules" id="segment_rules" class="form-control @error('segment_rules') is-invalid @enderror" rows="3" placeholder='Contoh: {"new_customer_only": true, "min_orders": 3}'>{{ old('segment_rules') ? json_encode(old('segment_rules')) : '' }}</textarea>
-                        @error('segment_rules')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        <small class="text-muted">Masukkan JSON untuk membatasi pelanggan yang berhak menggunakan promo.</small>
+                        <label>Segmentasi Pelanggan (Sederhana)</label>
+                        <div class="border p-2 rounded">
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" id="sr_new_customer" name="sr_new_customer" value="1" {{ old('sr_new_customer') ? 'checked' : '' }}>
+                                <label for="sr_new_customer" class="form-check-label">Pelanggan baru (belum pernah memesan)</label>
+                            </div>
+                            <div class="form-row align-items-center mb-2">
+                                <div class="col-auto">
+                                    <label class="mb-0">Umur akun</label>
+                                </div>
+                                <div class="col-auto">
+                                    <select name="sr_age_mode" class="form-control form-control-sm">
+                                        <option value="max" {{ old('sr_age_mode','max')==='max' ? 'selected' : '' }}>≤</option>
+                                        <option value="min" {{ old('sr_age_mode')==='min' ? 'selected' : '' }}>≥</option>
+                                    </select>
+                                </div>
+                                <div class="col">
+                                    <input type="number" name="sr_age_days" class="form-control form-control-sm" placeholder="hari" value="{{ old('sr_age_days') }}">
+                                </div>
+                            </div>
+                            <div class="form-row align-items-center">
+                                <div class="col-auto">
+                                    <label class="mb-0">Minimal pesanan selesai</label>
+                                </div>
+                                <div class="col">
+                                    <input type="number" name="sr_min_past_bookings" class="form-control form-control-sm" placeholder="jumlah" value="{{ old('sr_min_past_bookings') }}">
+                                </div>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mt-1">Gunakan builder di atas untuk segmentasi umum tanpa perlu JSON.</small>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="segment_rules">Aturan Segmentasi (Lanjutan, JSON – opsional)</label>
+                    <textarea name="segment_rules" id="segment_rules" class="form-control @error('segment_rules') is-invalid @enderror" rows="3" placeholder='Contoh: {"new_customer": true, "max_days_since_registration": 7, "min_past_bookings": 2}'>{{ old('segment_rules') ? json_encode(old('segment_rules')) : '' }}</textarea>
+                    @error('segment_rules')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <small class="text-muted">Biarkan kosong jika menggunakan builder sederhana di atas.</small>
                 </div>
 
                 <div class="text-right">
@@ -89,4 +122,3 @@
         </div>
     </div>
 @stop
-
