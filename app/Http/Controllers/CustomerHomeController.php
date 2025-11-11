@@ -12,6 +12,47 @@ use Illuminate\Support\Carbon;
 
 class CustomerHomeController extends Controller
 {
+    /**
+     * Determine if a promotion is eligible for the given customer based on segment_rules.
+     */
+    private function isPromotionEligible(Promotion $promotion, ?Customer $customer, int $totalPastBookings): bool
+    {
+        $rules = $promotion->segment_rules ?? [];
+
+        // If no rules, eligible for everyone
+        if (empty($rules)) {
+            return true;
+        }
+
+        // new_customer: true -> Only customers with 0 past bookings
+        if (array_key_exists('new_customer', $rules)) {
+            $required = (bool) $rules['new_customer'];
+            if ($required) {
+                if (!$customer) return false; // must have a customer profile
+                if ($totalPastBookings > 0) return false; // not new anymore
+            }
+        }
+
+        // min_days_since_registration: N -> require account age >= N days
+        if (array_key_exists('min_days_since_registration', $rules)) {
+            $days = (int) $rules['min_days_since_registration'];
+            if ($days > 0) {
+                if (!$customer || !$customer->created_at) return false;
+                $ageDays = now()->diffInDays($customer->created_at);
+                if ($ageDays < $days) return false;
+            }
+        }
+
+        // min_past_bookings: N -> require at least N completed bookings in the past
+        if (array_key_exists('min_past_bookings', $rules)) {
+            $min = (int) $rules['min_past_bookings'];
+            if ($min > 0 && $totalPastBookings < $min) {
+                return false;
+            }
+        }
+
+        return true;
+    }
     public function index()
     {
         $user = Auth::user();
@@ -51,6 +92,11 @@ class CustomerHomeController extends Controller
             ->limit(5)
             ->get();
 
+        // Filter berdasarkan eligibility (segment_rules)
+        $eligiblePromotions = $activePromotions->filter(function ($promo) use ($customer, $totalPastBookings) {
+            return $this->isPromotionEligible($promo, $customer, $totalPastBookings);
+        })->values();
+
         // Layanan populer/terdaftar untuk ditampilkan sebagai "Spesialisasi/Layanan"
         $services = Service::query()
             ->orderBy('name')
@@ -73,7 +119,7 @@ class CustomerHomeController extends Controller
             'nextBooking' => $nextBooking,
             'upcomingBookings' => $upcomingBookings,
             'totalPastBookings' => $totalPastBookings,
-            'activePromotions' => $activePromotions,
+            'activePromotions' => $eligiblePromotions,
             'services' => $services,
             'topCleaners' => $topCleaners,
         ]);

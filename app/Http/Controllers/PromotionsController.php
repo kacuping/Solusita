@@ -70,7 +70,8 @@ class PromotionsController extends Controller
             'ends_at' => ['nullable','date','after_or_equal:starts_at'],
             'active' => ['required','boolean'],
             'usage_limit' => ['nullable','integer','min:1'],
-            'segment_rules' => ['nullable','array'],
+            // Accept JSON string or array for segment rules
+            'segment_rules' => ['nullable'],
         ]);
 
         // If discount_type is percent, clamp to 0-100
@@ -78,7 +79,21 @@ class PromotionsController extends Controller
             $validated['discount_value'] = min(max($validated['discount_value'], 0), 100);
         }
 
+        // Normalize segment_rules: decode JSON if provided as string
+        if (isset($validated['segment_rules'])) {
+            if (is_string($validated['segment_rules'])) {
+                try {
+                    $decoded = json_decode($validated['segment_rules'], true, 512, JSON_THROW_ON_ERROR);
+                    $validated['segment_rules'] = is_array($decoded) ? $decoded : null;
+                } catch (\Throwable $e) {
+                    // If invalid JSON, drop the value to avoid errors
+                    $validated['segment_rules'] = null;
+                }
+            } elseif (!is_array($validated['segment_rules'])) {
+                $validated['segment_rules'] = null;
+            }
+        }
+
         return $validated;
     }
 }
-
