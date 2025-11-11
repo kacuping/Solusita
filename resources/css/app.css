@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Solusita login styles */
+.solusita-login-bg {
+  background-color: #f5f7fb;
+  position: relative; /* Ensure pseudo element positions correctly */
+}
+.solusita-login-bg::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 42%;
+  height: 100%;
+  background: linear-gradient(135deg, #1565c0 0%, #1e73d9 60%, #4792f0 100%); /* Solusita blue gradient */
+  /* Put the blue wave BEHIND the white card */
+  z-index: 0;
+  /* Stronger wave shape using clip-path */
+  clip-path: polygon(
+    0 0,
+    65% 0,
+    75% 18%,
+    68% 50%,
+    75% 82%,
+    65% 100%,
+    0 100%
+  );
+}
+
+.login-card {
+  width: 360px;
+  background: #ffffff;
+  border-radius: 24px;
+  box-shadow: 0 20px 40px rgba(21, 101, 192, 0.15);
+  padding: 28px;
+  position: relative; /* Ensure card sits above wave */
+  z-index: 1;
+}
+.login-card .login-pill { text-align: center; }
+.login-pill {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 9999px;
+  background: #1565c0;
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 2px solid #e3e8ef;
+}
+.input-row input {
+  flex: 1;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  padding: 6px 2px;
+  font-size: 0.95rem;
+}
+.input-row input::placeholder { color: #7f8ea3; }
+.login-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.login-button {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 9999px;
+  text-align: center;
+  background: #1565c0;
+  color: #ffffff;
+  font-weight: 600;
+}
+.login-button:hover { background: #0d4fa1; }
