@@ -47,9 +47,9 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # Hostinger Anda hanya membuka port 21, gunakan protocol FTP plain
+          # Gunakan FTPS (Explicit TLS) karena login via FileZilla berhasil dengan FTPS
           port: ${{ secrets.FTP_PORT }}
-          protocol: ftp
+          protocol: ftps
           # Akun FTP ini memiliki root di public_html (sesuai hPanel), jadi path tujuan relatif dari sana
           # Jika subdomain disimpan di public_html/solusita/, cukup gunakan /solusita/
           # Jika root Anda berbeda, ubah sesuai kebutuhan.
