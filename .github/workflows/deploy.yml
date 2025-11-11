@@ -1,0 +1,61 @@
+name: Deploy to Hostinger via FTP
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+          extensions: mbstring, bcmath, intl, gd, curl, zip
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: |
+          composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install NPM dependencies and build assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy via FTP (Hostinger)
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # Hostinger Anda hanya membuka port 21, gunakan protocol FTP plain
+          port: ${{ secrets.FTP_PORT }}
+          protocol: ftp
+          # Sesuaikan path ini jika root FTP Anda langsung berada di public_html/
+          server-dir: "/domains/luasbidang.com/public_html/solusita/"
+          local-dir: "./"
+          exclude: |
+            **/.git*
+            **/.github/**
+            **/node_modules/**
+            **/tests/**
+            **/.idea/**
+            **/.vscode/**
+            **/storage/framework/sessions/**
+            **/storage/framework/testing/**
+            **/storage/logs/**
+            **/vendor/bin/**
+            **/.env
+          dangerous-clean-slate: false

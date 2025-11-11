@@ -43,6 +43,16 @@ class CustomerHomeController extends Controller
             }
         }
 
+        // max_days_since_registration: N -> require account age <= N days
+        if (array_key_exists('max_days_since_registration', $rules)) {
+            $days = (int) $rules['max_days_since_registration'];
+            if ($days > 0) {
+                if (!$customer || !$customer->created_at) return false;
+                $ageDays = now()->diffInDays($customer->created_at);
+                if ($ageDays > $days) return false;
+            }
+        }
+
         // min_past_bookings: N -> require at least N completed bookings in the past
         if (array_key_exists('min_past_bookings', $rules)) {
             $min = (int) $rules['min_past_bookings'];

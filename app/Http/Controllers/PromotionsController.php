@@ -72,6 +72,11 @@ class PromotionsController extends Controller
             'usage_limit' => ['nullable','integer','min:1'],
             // Accept JSON string or array for segment rules
             'segment_rules' => ['nullable'],
+            // Simple segmentation builder fields (optional)
+            'sr_new_customer' => ['nullable'],
+            'sr_age_mode' => ['nullable','in:max,min'], // max => ≤ N days, min => ≥ N days
+            'sr_age_days' => ['nullable','integer','min:1'],
+            'sr_min_past_bookings' => ['nullable','integer','min:1'],
         ]);
 
         // If discount_type is percent, clamp to 0-100
@@ -79,20 +84,49 @@ class PromotionsController extends Controller
             $validated['discount_value'] = min(max($validated['discount_value'], 0), 100);
         }
 
-        // Normalize segment_rules: decode JSON if provided as string
-        if (isset($validated['segment_rules'])) {
-            if (is_string($validated['segment_rules'])) {
-                try {
-                    $decoded = json_decode($validated['segment_rules'], true, 512, JSON_THROW_ON_ERROR);
-                    $validated['segment_rules'] = is_array($decoded) ? $decoded : null;
-                } catch (\Throwable $e) {
-                    // If invalid JSON, drop the value to avoid errors
-                    $validated['segment_rules'] = null;
+        // Build segment_rules from simple fields if provided
+        $builtRules = [];
+        if (!empty($validated['sr_new_customer'])) {
+            $builtRules['new_customer'] = true;
+        }
+        if (!empty($validated['sr_age_days'])) {
+            $mode = $validated['sr_age_mode'] ?? 'max';
+            $days = (int) $validated['sr_age_days'];
+            if ($days > 0) {
+                if ($mode === 'min') {
+                    $builtRules['min_days_since_registration'] = $days;
+                } else {
+                    $builtRules['max_days_since_registration'] = $days; // default ≤ N days
                 }
-            } elseif (!is_array($validated['segment_rules'])) {
-                $validated['segment_rules'] = null;
             }
         }
+        if (!empty($validated['sr_min_past_bookings'])) {
+            $min = (int) $validated['sr_min_past_bookings'];
+            if ($min > 0) {
+                $builtRules['min_past_bookings'] = $min;
+            }
+        }
+
+        if (!empty($builtRules)) {
+            $validated['segment_rules'] = $builtRules;
+        } else {
+            // Normalize segment_rules: decode JSON if provided as string
+            if (isset($validated['segment_rules'])) {
+                if (is_string($validated['segment_rules'])) {
+                    try {
+                        $decoded = json_decode($validated['segment_rules'], true, 512, JSON_THROW_ON_ERROR);
+                        $validated['segment_rules'] = is_array($decoded) ? $decoded : null;
+                    } catch (\Throwable $e) {
+                        $validated['segment_rules'] = null;
+                    }
+                } elseif (!is_array($validated['segment_rules'])) {
+                    $validated['segment_rules'] = null;
+                }
+            }
+        }
+
+        // Remove builder-only keys from final payload
+        unset($validated['sr_new_customer'], $validated['sr_age_mode'], $validated['sr_age_days'], $validated['sr_min_past_bookings']);
 
         return $validated;
     }

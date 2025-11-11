@@ -20,7 +20,10 @@ class ApprovalController extends Controller
      */
     public function index()
     {
+        // Hanya tampilkan user internal (bukan pelanggan) yang belum terverifikasi.
+        // Pelanggan yang registrasi mandiri tidak memerlukan approval admin.
         $pendingUsers = User::whereNull('email_verified_at')
+            ->where('role', '!=', 'customer')
             ->orderByDesc('created_at')
             ->paginate(15);
 
@@ -40,6 +43,11 @@ class ApprovalController extends Controller
      */
     public function approve(User $user, Request $request)
     {
+        // Cegah approval untuk pelanggan: mereka tidak mengikuti workflow approval admin.
+        if (($user->role ?? 'customer') === 'customer') {
+            return redirect()->route('approvals.index')->with('info', 'Pelanggan tidak memerlukan approval admin. Verifikasi dilakukan melalui email.');
+        }
+
         if ($user->email_verified_at) {
             return redirect()->route('approvals.index')->with('info', 'User sudah terverifikasi.');
         }

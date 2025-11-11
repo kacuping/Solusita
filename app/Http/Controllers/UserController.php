@@ -18,7 +18,11 @@ class UserController extends Controller
 
     public function index()
     {
-        $users = User::orderBy('name')->paginate(10);
+        // Tampilkan hanya user internal: administrator & staff.
+        // Pelanggan tidak perlu muncul di daftar /users.
+        $users = User::whereIn('role', ['administrator', 'staff'])
+            ->orderBy('name')
+            ->paginate(10);
         return view('users.index', compact('users'));
     }
 
