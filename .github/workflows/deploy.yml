@@ -56,9 +56,9 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # Gunakan FTPS (Explicit TLS) karena login via FileZilla berhasil dengan FTPS
+          # Gunakan SFTP (SSH) sesuai detail Hostinger Anda (port non-standar 65002)
           port: ${{ secrets.FTP_PORT }}
-          protocol: ftps
+          protocol: sftp
           # Perpanjang timeout untuk sesi upload besar (mis. folder vendor)
           timeout: 900000 # 15 menit
           # Tingkatkan detail log untuk troubleshooting (minimal|standard|verbose)
