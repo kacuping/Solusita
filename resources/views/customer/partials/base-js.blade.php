@@ -9,8 +9,8 @@
         var footerH = footer.offsetHeight || 0;
         var viewportH = window.innerHeight;
         var appScrollH = app.scrollHeight;
-        // If content taller than viewport (needs scroll), add padding equal to footer height
-        if (appScrollH > viewportH) {
+        // If content height is at least viewport (full or more), add padding for footer
+        if (appScrollH >= viewportH) {
           app.style.paddingBottom = (footerH + 8) + 'px';
         } else {
           // Otherwise keep content snug without extra scroll gap
