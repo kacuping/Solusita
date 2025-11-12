@@ -44,25 +44,52 @@ jobs:
           if [ -z "${{ secrets.SFTP_SERVER }}" ]; then echo "Missing GitHub Secret: SFTP_SERVER" && exit 1; fi
           if [ -z "${{ secrets.SFTP_USERNAME }}" ]; then echo "Missing GitHub Secret: SFTP_USERNAME" && exit 1; fi
           if [ -z "${{ secrets.SFTP_PORT }}" ]; then echo "Missing GitHub Secret: SFTP_PORT" && exit 1; fi
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "Missing GitHub Secret: SSH_PRIVATE_KEY" && exit 1; fi
           if [ -z "${{ secrets.SFTP_REMOTE_PATH }}" ]; then echo "Missing GitHub Secret: SFTP_REMOTE_PATH" && exit 1; fi
-          echo "All required secrets are present. Proceeding to SFTP deploy."
+          # Minimal auth requirement: either SFTP_PASSWORD (password-based) OR SSH_PRIVATE_KEY (key-based)
+          if [ -z "${{ secrets.SFTP_PASSWORD }}" ] && [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "Missing authentication: isi salah satu GitHub Secret: SFTP_PASSWORD atau SSH_PRIVATE_KEY"
+            exit 1
+          fi
+          echo "OK: Secrets minimum terpenuhi. Lanjut ke langkah upload incremental via SFTP."
 
-      - name: Deploy via SFTP (Hostinger)
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.6
+      # Upload incremental (hanya file yang berubah) via SFTP mirror dengan password
+      - name: Upload only changed files (SFTP mirror - password)
+        if: ${{ secrets.SFTP_PASSWORD != '' }}
+        uses: pressidium/lftp-mirror-action@v1
         with:
-          server: ${{ secrets.SFTP_SERVER }}
+          host: ${{ secrets.SFTP_SERVER }}
+          remote-protocol: 'sftp'
           port: ${{ secrets.SFTP_PORT }}
-          username: ${{ secrets.SFTP_USERNAME }}
-          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}   # <- pakai nama input yang benar
-          ssh_passphrase: ${{ secrets.SSH_PASSPHRASE }}      # isi hanya jika private key ber-passphrase
-          local_path: ./
-          remote_path: ${{ secrets.SFTP_REMOTE_PATH }}
-          sftp_only: true
-          sftpArgs: "-o StrictHostKeyChecking=no"
+          user: ${{ secrets.SFTP_USERNAME }}
+          pass: ${{ secrets.SFTP_PASSWORD }}
+          localDir: './'
+          remoteDir: ${{ secrets.SFTP_REMOTE_PATH }}
+          reverse: true
+          # Opsi mirror: hanya kirim file lebih baru, hapus file lama di server agar identik
+          options: "--delete --only-newer --verbose --exclude-glob .git --exclude-glob node_modules --exclude-glob storage/framework --exclude-glob storage/logs --exclude-glob .env"
+
+      # Upload incremental via SFTP mirror dengan key (fallback jika tidak memakai password)
+      - name: Upload only changed files (SFTP mirror - key)
+        if: ${{ (secrets.SFTP_PASSWORD == '' || !secrets.SFTP_PASSWORD) && secrets.SSH_PRIVATE_KEY != '' }}
+        uses: pressidium/lftp-mirror-action@v1
+        env:
+          LFTP_PASSWORD: ''
+        with:
+          host: ${{ secrets.SFTP_SERVER }}
+          remote-protocol: 'sftp'
+          port: ${{ secrets.SFTP_PORT }}
+          user: ${{ secrets.SFTP_USERNAME }}
+          # Catatan: untuk auth key-based, host harus menerima public key Anda via hPanel
+          # Action ini terutama untuk password, sehingga disarankan mengisi SFTP_PASSWORD.
+          # Jika host mendukung key-agent, Anda dapat menggunakan konfigurasi server.
+          pass: ${{ env.LFTP_PASSWORD }}
+          localDir: './'
+          remoteDir: ${{ secrets.SFTP_REMOTE_PATH }}
+          reverse: true
+          options: "--delete --only-newer --verbose --exclude-glob .git --exclude-glob node_modules --exclude-glob storage/framework --exclude-glob storage/logs --exclude-glob .env"
 
       - name: Run post-deploy commands on server (Composer, cache, migrate)
-        if: ${{ success() }}
+        if: ${{ success() && secrets.SSH_PRIVATE_KEY != '' }}
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.SFTP_SERVER }}
