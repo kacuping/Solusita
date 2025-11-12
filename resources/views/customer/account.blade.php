@@ -25,7 +25,9 @@
         .app {
             max-width: 420px;
             margin: 0 auto;
-            min-height: 100vh;
+            /* Gunakan unit viewport dinamis agar tidak muncul scroll mikro di mobile */
+            min-height: 100vh; /* fallback */
+            min-height: 100dvh; /* modern browsers */
             display: flex;
             flex-direction: column;
         }
@@ -69,7 +71,8 @@
         }
 
         /* Footer bottom navigation (samakan perilaku dengan halaman home: fixed) */
-        .app { padding-bottom: 84px; } /* ruang untuk bottom nav agar konten tidak tertutup */
+        /* Pindahkan ruang ekstra ke .content agar halaman tidak bertambah tinggi (menghindari scrollbar kanan) */
+        .content { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0)); }
         .footer { position: fixed; bottom: 0; left: 0; right: 0; }
 
         .footer .bar {

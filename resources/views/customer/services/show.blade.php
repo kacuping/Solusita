@@ -9,7 +9,7 @@
     <style>
         :root { --bg:#f6f8fc; --primary:#4b88ff; --text:#1f2d3d; --muted:#7b8ca6; --card:#fff; --shadow:0 10px 20px rgba(0,0,0,.08); }
         body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial; background: var(--bg); }
-        .app { max-width: 420px; margin: 0 auto; min-height: 100vh; }
+        .app { max-width: 420px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; }
         .header { background: linear-gradient(180deg, #6aa4ff 0%, #9ec1ff 100%); color:#fff; padding: 28px 16px 40px; }
         .card { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 18px; margin: -20px 16px 18px; }
         .title { font-size: 20px; font-weight: 700; color: var(--text); }

@@ -28,7 +28,9 @@
         .app {
             max-width: 420px;
             margin: 0 auto;
-            min-height: 100vh;
+            /* Gunakan unit viewport dinamis agar tidak muncul scroll mikro di mobile */
+            min-height: 100vh; /* fallback */
+            min-height: 100dvh; /* modern browsers */
             display: flex;
             flex-direction: column;
             position: relative; /* untuk menempatkan bg-extend di belakang konten */

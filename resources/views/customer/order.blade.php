@@ -39,7 +39,8 @@
         .app {
             max-width: 420px;
             margin: 0 auto;
-            min-height: 100vh;
+            min-height: 100vh; /* fallback */
+            min-height: 100dvh; /* modern browsers */
             padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom, 0) + 12px);
             /* sedikit padding atas agar header tidak nempel dengan status bar saat inspect */
         }
