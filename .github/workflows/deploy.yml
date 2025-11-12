@@ -1,4 +1,4 @@
-name: Deploy to Hostinger via FTPS
+name: Deploy to Hostinger via SFTP
 
 on:
   push:
@@ -43,43 +43,23 @@ jobs:
             echo "OK: ./public/build/manifest.json ditemukan. Lanjut ke deploy."
           fi
 
-      - name: Validate FTP secrets presence
+      - name: Validate SFTP/SSH secrets presence
         run: |
-          if [ -z "${{ secrets.FTP_SERVER }}" ]; then echo "Missing GitHub Secret: FTP_SERVER" && exit 1; fi
-          if [ -z "${{ secrets.FTP_USERNAME }}" ]; then echo "Missing GitHub Secret: FTP_USERNAME" && exit 1; fi
-          if [ -z "${{ secrets.FTP_PASSWORD }}" ]; then echo "Missing GitHub Secret: FTP_PASSWORD" && exit 1; fi
-          echo "All required secrets are present. Proceeding to FTP deploy."
+          if [ -z "${{ secrets.SFTP_SERVER }}" ]; then echo "Missing GitHub Secret: SFTP_SERVER" && exit 1; fi
+          if [ -z "${{ secrets.SFTP_USERNAME }}" ]; then echo "Missing GitHub Secret: SFTP_USERNAME" && exit 1; fi
+          if [ -z "${{ secrets.SFTP_PORT }}" ]; then echo "Missing GitHub Secret: SFTP_PORT" && exit 1; fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "Missing GitHub Secret: SSH_PRIVATE_KEY" && exit 1; fi
+          if [ -z "${{ secrets.SFTP_REMOTE_PATH }}" ]; then echo "Missing GitHub Secret: SFTP_REMOTE_PATH" && exit 1; fi
+          echo "All required secrets are present. Proceeding to SFTP deploy."
 
-      - name: Deploy via FTPS (Hostinger)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy via SFTP (Hostinger)
+        uses: wlixcc/SFTP-Deploy-Action@v1.1
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          # Beberapa server Hostinger menutup koneksi FTPS modern.
-          # Gunakan ftps-legacy untuk kompatibilitas yang lebih baik.
-          protocol: ftps-legacy
-          port: 21
-          # Perpanjang timeout untuk sesi upload besar (mis. folder vendor)
-          timeout: 600000 # 10 menit
-          # Tingkatkan detail log untuk troubleshooting (minimal|standard|verbose)
-          log-level: verbose
-          # Banyak akun Hostinger menempatkan root di public_html.
-          # Jika akun Anda langsung membuka public_html sebagai root, Anda bisa gunakan "/solusita/".
-          # Jika root Anda berada di home (harus masuk ke public_html), gunakan "public_html/solusita/".
-          server-dir: "public_html/solusita/"
-          local-dir: "./"
-          exclude: |
-            **/.git*
-            **/.github/**
-            **/node_modules/**
-            **/vendor/**
-            **/tests/**
-            **/.idea/**
-            **/.vscode/**
-            **/storage/framework/sessions/**
-            **/storage/framework/testing/**
-            **/storage/logs/**
-            **/vendor/bin/**
-            **/.env
-          dangerous-clean-slate: false
+          server: ${{ secrets.SFTP_SERVER }}
+          port: ${{ secrets.SFTP_PORT }}
+          username: ${{ secrets.SFTP_USERNAME }}
+          private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          local_path: ./
+          remote_path: ${{ secrets.SFTP_REMOTE_PATH }}
+          sftp_only: true
+          args: "-o StrictHostKeyChecking=no"
