@@ -6,19 +6,27 @@ use App\Models\ServiceCategory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class AdminServiceCategoryController extends Controller
 {
     public function index(Request $request): View
     {
         $search = trim((string) $request->query('q', ''));
-        $query = ServiceCategory::query()->orderBy('name');
-
-        if ($search !== '') {
-            $query->where('name', 'like', "%{$search}%");
+        $perPage = 15;
+        if (Schema::hasTable('service_categories')) {
+            $query = ServiceCategory::query()->orderBy('name');
+            if ($search !== '') {
+                $query->where('name', 'like', "%{$search}%");
+            }
+            $categories = $query->paginate($perPage)->withQueryString();
+        } else {
+            $categories = new LengthAwarePaginator([], 0, $perPage, (int)($request->query('page', 1)), [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]);
         }
-
-        $categories = $query->paginate(15)->withQueryString();
 
         return view('admin.service_categories.index', [
             'categories' => $categories,
@@ -62,4 +70,3 @@ class AdminServiceCategoryController extends Controller
         return back()->with('status', 'Kategori berhasil dihapus.');
     }
 }
-
