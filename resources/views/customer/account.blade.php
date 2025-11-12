@@ -68,10 +68,9 @@
             font-size: 13px;
         }
 
-        /* Footer bottom navigation (selaras dengan halaman home) */
-        .footer {
-            margin: 0 0 12px;
-        }
+        /* Footer bottom navigation (samakan perilaku dengan halaman home: fixed) */
+        .app { padding-bottom: 84px; } /* ruang untuk bottom nav agar konten tidak tertutup */
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; }
 
         .footer .bar {
             max-width: 420px;
