@@ -1,4 +1,4 @@
-name: Deploy to Hostinger via FTP
+name: Deploy to Hostinger via FTPS
 
 on:
   push:
@@ -50,23 +50,23 @@ jobs:
           if [ -z "${{ secrets.FTP_PASSWORD }}" ]; then echo "Missing GitHub Secret: FTP_PASSWORD" && exit 1; fi
           echo "All required secrets are present. Proceeding to FTP deploy."
 
-      - name: Deploy via FTP (Hostinger)
+      - name: Deploy via FTPS (Hostinger)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # Gunakan SFTP (SSH) sesuai detail Hostinger Anda (port non-standar 65002)
-          port: ${{ secrets.FTP_PORT }}
-          protocol: sftp
+          # Gunakan FTPS (TLS) pada port standar 21
+          protocol: ftps
+          port: 21
           # Perpanjang timeout untuk sesi upload besar (mis. folder vendor)
           timeout: 900000 # 15 menit
           # Tingkatkan detail log untuk troubleshooting (minimal|standard|verbose)
           log-level: verbose
-          # Akun FTP ini memiliki root di public_html (sesuai hPanel), jadi path tujuan relatif dari sana
-          # Jika subdomain disimpan di public_html/solusita/, cukup gunakan /solusita/
-          # Jika root Anda berbeda, ubah sesuai kebutuhan.
-          server-dir: "/solusita/"
+          # Banyak akun Hostinger menempatkan root di public_html.
+          # Jika akun Anda langsung membuka public_html sebagai root, Anda bisa gunakan "/solusita/".
+          # Jika root Anda berada di home (harus masuk ke public_html), gunakan "public_html/solusita/".
+          server-dir: "public_html/solusita/"
           local-dir: "./"
           exclude: |
             **/.git*
