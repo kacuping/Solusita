@@ -34,6 +34,15 @@ jobs:
           npm ci
           npm run build
 
+      - name: Verify Vite manifest exists
+        run: |
+          if [ ! -f "./public/build/manifest.json" ]; then
+            echo "ERROR: Vite manifest.json tidak ditemukan di ./public/build/. Pastikan proses build sukses dan output diarahkan ke public/build."
+            exit 1
+          else
+            echo "OK: ./public/build/manifest.json ditemukan. Lanjut ke deploy."
+          fi
+
       - name: Validate FTP secrets presence
         run: |
           if [ -z "${{ secrets.FTP_SERVER }}" ]; then echo "Missing GitHub Secret: FTP_SERVER" && exit 1; fi
@@ -50,6 +59,10 @@ jobs:
           # Gunakan FTPS (Explicit TLS) karena login via FileZilla berhasil dengan FTPS
           port: ${{ secrets.FTP_PORT }}
           protocol: ftps
+          # Perpanjang timeout untuk sesi upload besar (mis. folder vendor)
+          timeout: 900000 # 15 menit
+          # Tingkatkan detail log untuk troubleshooting (minimal|standard|verbose)
+          log-level: verbose
           # Akun FTP ini memiliki root di public_html (sesuai hPanel), jadi path tujuan relatif dari sana
           # Jika subdomain disimpan di public_html/solusita/, cukup gunakan /solusita/
           # Jika root Anda berbeda, ubah sesuai kebutuhan.

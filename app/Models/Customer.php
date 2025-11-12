@@ -12,7 +12,13 @@ class Customer extends Model
         'email',
         'phone',
         'address',
+        'dob',
+        'avatar',
         'notes',
+    ];
+
+    protected $casts = [
+        'dob' => 'date',
     ];
 
     /**

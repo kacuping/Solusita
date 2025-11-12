@@ -61,7 +61,8 @@
 
         .content {
             flex: 1;
-            padding: 0 16px 84px;
+            /* tidak melayang lagi: kurangi padding bawah */
+            padding: 0 16px 24px;
         }
 
         .section-title {
@@ -143,41 +144,63 @@
             margin-left: 6px;
         }
 
+        /* Bottom Navigation (disamakan dengan profil) */
         .footer {
-            position: fixed;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: #fff;
-            box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.08);
-            padding: 10px 0;
+            margin: 0 0 12px;
         }
 
         .footer .bar {
             max-width: 420px;
             margin: 0 auto;
             display: flex;
-            justify-content: space-around;
+            justify-content: space-between;
+            background: #ffffff;
+            border-radius: 18px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.10);
+            padding: 6px 6px;
+            /* perkecil kiri-kanan */
+            pointer-events: auto;
         }
 
         .footer .item {
             text-decoration: none;
             color: var(--muted);
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
+            flex: 1;
+            /* distribusi item fleksibel */
+            position: relative;
+            padding: 4px 0;
+            border-radius: 14px;
         }
 
         .footer .item .ico {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 36px;
-            height: 36px;
-            border-radius: 12px;
-            background: #eef3ff;
-            margin: 0 auto 4px;
+            width: 28px;
+            height: 28px;
+            margin: 0 auto 2px;
             color: var(--primary-dark);
+            font-size: 16px;
         }
+
+        .footer .item.active {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        /* garis aktif lebih tipis di bawah ikon */
+        .footer .item.active::after {
+            content: '';
+            display: block;
+            width: 18px;
+            height: 1.5px;
+            border-radius: 2px;
+            background: var(--primary);
+            margin: 2px auto 0;
+        }
+
 
         .status {
             margin: -40px 16px 8px;
@@ -333,30 +356,12 @@
             </div>
         </div>
 
-        <!-- Bottom bar -->
+        <!-- Bottom bar (versi referensi) -->
+        @php
+            $current = \Illuminate\Support\Facades\Route::currentRouteName();
+        @endphp
         <div class="footer">
-            <div class="bar">
-                <a href="{{ route('customer.home') }}" class="item">
-                    <div class="ico">🏠</div>
-                    Beranda
-                </a>
-                <a href="{{ route('bookings.index') }}" class="item">
-                    <div class="ico">🗓️</div>
-                    Jadwal
-                </a>
-                <a href="{{ route('promotions.index') }}" class="item">
-                    <div class="ico">🎟️</div>
-                    Promo
-                </a>
-                <a href="#" class="item">
-                    <div class="ico">🛒</div>
-                    Pesanan
-                </a>
-                <a href="{{ route('profile.edit') }}" class="item">
-                    <div class="ico">👤</div>
-                    Akun
-                </a>
-            </div>
+            @include('customer.partials.bottom-nav')
         </div>
     </div>
 </body>

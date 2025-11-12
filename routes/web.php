@@ -3,6 +3,8 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\CustomerHomeController;
 use App\Http\Controllers\CustomerRegistrationController;
@@ -36,6 +38,104 @@ Route::prefix('customer')->group(function () {
         Route::get('/home', [CustomerHomeController::class, 'index'])->name('customer.home');
         Route::get('/services', [CustomerServiceController::class, 'index'])->name('customer.services.index');
         Route::get('/service/{slug}', [CustomerServiceController::class, 'show'])->name('customer.service.show');
+        // Pemesanan layanan (create & store)
+        Route::get('/order/{slug}', function ($slug) {
+            $service = \App\Models\Service::where('slug', $slug)->firstOrFail();
+            $user = auth()->user();
+            $customer = \App\Models\Customer::firstOrCreate(['user_id' => $user->id], [
+                'name' => $user->name,
+                'email' => $user->email,
+            ]);
+            return view('customer.order', compact('service', 'customer'));
+        })->name('customer.order.create');
+        Route::post('/order', function (\Illuminate\Http\Request $request) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+
+            $validated = $request->validate([
+                'service_id' => 'required|exists:services,id',
+                'date' => 'required|date',
+                'time' => 'required',
+                'address' => 'required|string|min:6',
+                'notes' => 'nullable|string',
+                'promotion_code' => 'nullable|string|max:50',
+            ]);
+
+            $service = \App\Models\Service::findOrFail($validated['service_id']);
+            $scheduledAt = \Carbon\Carbon::parse($validated['date'].' '.$validated['time']);
+
+            $booking = \App\Models\Booking::create([
+                'customer_id' => $customer->id,
+                'service_id' => $service->id,
+                'scheduled_at' => $scheduledAt,
+                'status' => 'pending',
+                'address' => $validated['address'],
+                'notes' => $validated['notes'] ?? null,
+                'duration_minutes' => $service->duration_minutes,
+                'total_amount' => $service->base_price,
+                'payment_status' => 'unpaid',
+                'promotion_code' => $validated['promotion_code'] ?? null,
+            ]);
+
+            return redirect()->route('customer.schedule')->with('status', 'Pesanan berhasil dibuat.');
+        })->name('customer.order.store');
+        // Halaman profil pelanggan (versi mobile sederhana)
+        Route::get('/profile', function () {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->first();
+            return view('customer.account', compact('user','customer'));
+        })->name('customer.profile');
+        // Jadwal pelanggan (versi mobile sederhana)
+        Route::get('/schedule', function () {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->first();
+            $bookings = \App\Models\Booking::where('customer_id', optional($customer)->id)
+                ->orderBy('scheduled_at', 'asc')
+                ->get();
+            return view('customer.schedule', compact('bookings', 'customer'));
+        })->name('customer.schedule');
+        // Update profil pelanggan (inline edit)
+        Route::post('/profile/update', function (Request $request) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::firstOrCreate(['user_id' => $user->id]);
+
+            $validated = $request->validate([
+                'name' => 'nullable|string|max:255',
+                'email' => 'nullable|email|max:255',
+                'phone' => 'nullable|string|max:25',
+                'address' => 'nullable|string|max:255',
+                'dob' => 'nullable|date',
+            ]);
+
+            if (array_key_exists('name', $validated)) { $user->name = $validated['name']; }
+            if (array_key_exists('email', $validated)) { $user->email = $validated['email']; }
+            $user->save();
+
+            $customer->phone = $validated['phone'] ?? $customer->phone;
+            $customer->address = $validated['address'] ?? $customer->address;
+            $customer->dob = $validated['dob'] ?? $customer->dob;
+            $customer->save();
+
+            return back()->with('status', 'Profil diperbarui');
+        })->name('customer.profile.update');
+        // Upload avatar pelanggan
+        Route::post('/profile/avatar', function (Request $request) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::firstOrCreate(['user_id' => $user->id]);
+
+            $validated = $request->validate([
+                'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+            ]);
+
+            if ($request->hasFile('avatar')) {
+                $path = $request->file('avatar')->store('avatars', 'public');
+                $url = Storage::url($path); // e.g., /storage/avatars/filename.jpg
+                $customer->avatar = $url;
+                $customer->save();
+            }
+
+            return back()->with('status', 'Foto profil diperbarui');
+        })->name('customer.profile.avatar');
         // Tambahkan route /customer lainnya di sini ke depannya
     });
 });

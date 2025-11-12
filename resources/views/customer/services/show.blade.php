@@ -8,7 +8,7 @@
     <style>
         :root { --bg:#f6f8fc; --primary:#4b88ff; --text:#1f2d3d; --muted:#7b8ca6; --card:#fff; --shadow:0 10px 20px rgba(0,0,0,.08); }
         body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial; background: var(--bg); }
-        .app { max-width: 420px; margin: 0 auto; min-height: 100vh; }
+        .app { max-width: 420px; margin: 0 auto; min-height: 100vh; padding-bottom:64px; }
         .header { background: linear-gradient(180deg, #6aa4ff 0%, #9ec1ff 100%); color:#fff; padding: 28px 16px 40px; }
         .card { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 18px; margin: -20px 16px 18px; }
         .title { font-size: 20px; font-weight: 700; color: var(--text); }
@@ -19,6 +19,13 @@
         .btn { flex:1; display:block; text-align:center; padding:12px 14px; border-radius:12px; text-decoration:none; }
         .btn-primary { background: var(--primary); color:#fff; }
         .btn-secondary { background: #eef3ff; color:#2a57c4; }
+        /* Bottom Navigation */
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; }
+        .footer .bar { max-width: 420px; margin: 0 auto 8px; display:flex; justify-content: space-between; background:#fff; border-radius:18px; box-shadow: 0 10px 20px rgba(0,0,0,.10); padding:6px 6px; }
+        .footer .item { text-decoration:none; color: var(--muted); text-align:center; font-size:11px; flex:1; position:relative; padding:4px 0; border-radius:14px; }
+        .footer .item .ico { display:flex; align-items:center; justify-content:center; width:28px; height:28px; margin:0 auto 2px; color:#2a57c4; font-size:16px; }
+        .footer .item.active { color: var(--text); font-weight:600; }
+        .footer .item.active::after { content:''; display:block; width:18px; height:1.5px; border-radius:2px; background: var(--primary); margin:2px auto 0; }
     </style>
     </head>
 <body>
@@ -37,9 +44,12 @@
             <div class="meta" style="color: var(--text);">{{ $service->description ?? 'Belum ada deskripsi.' }}</div>
             <div class="price">Rp {{ number_format($service->base_price, 0, ',', '.') }}</div>
             <div class="actions">
-                <a href="#" class="btn btn-primary">Pesan Layanan</a>
+                <a href="{{ route('customer.order.create', $service->slug) }}" class="btn btn-primary">Pesan Layanan</a>
                 <a href="{{ route('customer.home') }}" class="btn btn-secondary">Kembali</a>
             </div>
+        </div>
+        <div class="footer">
+            @include('customer.partials.bottom-nav')
         </div>
     </div>
 </body>
