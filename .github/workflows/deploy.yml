@@ -20,9 +20,8 @@ jobs:
           extensions: mbstring, bcmath, intl, gd, curl, zip
           coverage: none
 
-      - name: Install Composer dependencies
-        run: |
-          composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+      # Jangan install composer di runner agar folder vendor tidak ikut ter-upload via SFTP
+      # Vendor akan di-install di server melalui langkah SSH di bawah.
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -53,7 +52,7 @@ jobs:
           echo "All required secrets are present. Proceeding to SFTP deploy."
 
       - name: Deploy via SFTP (Hostinger)
-        uses: wlixcc/SFTP-Deploy-Action@v1.1
+        uses: wlixcc/SFTP-Deploy-Action@v1.0
         with:
           server: ${{ secrets.SFTP_SERVER }}
           port: ${{ secrets.SFTP_PORT }}
@@ -63,3 +62,24 @@ jobs:
           remote_path: ${{ secrets.SFTP_REMOTE_PATH }}
           sftp_only: true
           args: "-o StrictHostKeyChecking=no"
+
+      - name: Run post-deploy commands on server (Composer, cache, migrate)
+        if: ${{ success() }}
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SFTP_SERVER }}
+          username: ${{ secrets.SFTP_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SFTP_PORT }}
+          script: |
+            set -e
+            cd ${{ secrets.SFTP_REMOTE_PATH }}
+            if command -v composer >/dev/null 2>&1; then
+              composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader || true
+            else
+              echo "Composer tidak ditemukan di server. Jalankan manual via SSH: 'composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader'" || true
+            fi
+            php artisan config:clear || true
+            php artisan cache:clear || true
+            php artisan migrate --force || true
+            php artisan db:seed --force || true
