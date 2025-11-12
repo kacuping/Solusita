@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Service;
+use App\Models\ServiceCategory;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -27,6 +28,7 @@ class AdminServiceController extends Controller
         }
 
         $services = $query->paginate(15)->withQueryString();
+        $categoryOptions = ServiceCategory::where('active', true)->orderBy('name')->get();
 
         // Count distinct active categories to inform admin if below minimum
         $distinctCategoryCount = Service::where('active', true)
@@ -34,10 +36,14 @@ class AdminServiceController extends Controller
             ->distinct()
             ->count('category');
 
+        $unitTypes = ['M2', 'Buah/Seater', 'Durasi', 'Satuan'];
+
         return view('admin.services.index', [
             'services' => $services,
             'search' => $search,
             'distinctCategoryCount' => $distinctCategoryCount,
+            'categoryOptions' => $categoryOptions,
+            'unitTypes' => $unitTypes,
         ]);
     }
 
@@ -50,14 +56,18 @@ class AdminServiceController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:500'],
             'base_price' => ['required', 'numeric', 'min:0'],
-            'duration_minutes' => ['required', 'integer', 'min:0'],
-            'category' => ['required', 'string', 'max:100', 'unique:services,category'],
+            'duration_minutes' => [Rule::requiredIf($request->input('unit_type') === 'Durasi'), 'integer', 'min:0'],
+            'category' => ['required', 'string', 'max:100', 'exists:service_categories,name'],
+            'unit_type' => ['required', Rule::in(['M2', 'Buah/Seater', 'Durasi', 'Satuan'])],
             'icon' => ['nullable', 'string', 'max:100'],
             'active' => ['nullable', 'boolean'],
         ]);
 
         $data['active'] = $request->boolean('active');
         $data['slug'] = Str::slug($data['name']);
+        if (($data['unit_type'] ?? null) !== 'Durasi') {
+            $data['duration_minutes'] = 0;
+        }
 
         Service::create($data);
 
@@ -73,14 +83,18 @@ class AdminServiceController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:500'],
             'base_price' => ['required', 'numeric', 'min:0'],
-            'duration_minutes' => ['required', 'integer', 'min:0'],
-            'category' => ['required', 'string', 'max:100', Rule::unique('services', 'category')->ignore($service->id)],
+            'duration_minutes' => [Rule::requiredIf($request->input('unit_type') === 'Durasi'), 'integer', 'min:0'],
+            'category' => ['required', 'string', 'max:100', 'exists:service_categories,name'],
+            'unit_type' => ['required', Rule::in(['M2', 'Buah/Seater', 'Durasi', 'Satuan'])],
             'icon' => ['nullable', 'string', 'max:100'],
             'active' => ['nullable', 'boolean'],
         ]);
 
         $data['active'] = $request->boolean('active');
         $data['slug'] = Str::slug($data['name']);
+        if (($data['unit_type'] ?? null) !== 'Durasi') {
+            $data['duration_minutes'] = 0;
+        }
 
         $service->update($data);
 

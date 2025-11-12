@@ -66,6 +66,9 @@
             align-items: center;
             justify-content: space-between;
         }
+        .greet-text { display:flex; flex-direction:column; }
+        #greetLabel { font-weight:600; font-size:20px; line-height:1.1; }
+        #greetName { font-size:14px; font-weight:500; opacity:.9; }
         .notif-bell {
             position: relative;
             display: inline-flex;
@@ -120,18 +123,19 @@
         .grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
+            gap: 10px;
         }
 
         .tile {
             display: block;
             text-decoration: none;
             background: var(--card);
-            border-radius: 16px;
-            padding: 14px 10px;
+            border-radius: 14px;
+            padding: 10px 8px;
             text-align: center;
             box-shadow: var(--shadow);
             color: var(--muted);
+            font-size: 13px;
         }
 
         .tile.active {
@@ -140,16 +144,16 @@
         }
 
         .tile .icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
-            margin: 0 auto 8px;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            margin: 0 auto 6px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: #eef3ff;
             color: var(--primary-dark);
-            font-size: 20px;
+            font-size: 18px;
         }
 
         .list {
@@ -330,7 +334,10 @@
             $greet = $hour < 12 ? 'Selamat pagi' : ($hour < 18 ? 'Selamat sore' : 'Selamat malam');
             ?>
             <div class="greeting">
-                <span>{{ $greet }}, {{ $firstName }}</span>
+                <div class="greet-text">
+                    <div id="greetLabel">{{ $greet }}</div>
+                    <div id="greetName">{{ $firstName }}</div>
+                </div>
                 <span id="notifBell" class="notif-bell" aria-label="Notifikasi">
                     <i class="fa-regular fa-bell"></i>
                 </span>
@@ -365,33 +372,32 @@
         </div>
 
         <div class="content">
-            <div class="section-title">Layanan</div>
+            <div class="section-title">Kategori Layanan</div>
             <div class="grid">
                 @php
                     $defaultIcons = [
                         'General' => 'fa-broom',
-                        'Karpet' => 'fa-rug',
+                        'Karpet' => 'fa-brush',
                         'Sofa' => 'fa-couch',
-                        'AC' => 'fa-fan',
+                        'AC' => 'fa-wind',
                         'Dapur' => 'fa-utensils',
                         'Kamar Mandi' => 'fa-shower',
                         'Lantai' => 'fa-broom',
                     ];
                 @endphp
-                @forelse($services as $i => $service)
+                @forelse($categories as $i => $cat)
                     @php
-                        $iconClass = $service->icon ?? ($defaultIcons[$service->category] ?? 'fa-broom');
-                        $href = $service->slug ? route('customer.service.show', $service->slug) : '#';
+                        $iconClass = $cat->icon ?? ($defaultIcons[$cat->name] ?? 'fa-broom');
+                        $href = route('customer.services.index', ['category' => $cat->name]);
                     @endphp
                     <a class="tile {{ $i === 2 ? 'active' : '' }}" href="{{ $href }}">
                         <div class="icon"><i class="fa {{ $iconClass }}"></i></div>
-                        <div>{{ $service->name }}</div>
+                        <div>{{ $cat->name }}</div>
                     </a>
                 @empty
-                    <div class="tile" style="grid-column: span 3;">Belum ada layanan.</div>
+                    <div class="tile" style="grid-column: span 3;">Belum ada kategori.</div>
                 @endforelse
             </div>
-            <a class="view-all" href="{{ route('customer.services.index') }}">Lihat Semua Layanan</a>
 
             <div class="section-title" style="margin-top: 22px">Petugas Terbaik</div>
             <div class="list">
@@ -435,4 +441,12 @@
 </body>
 
 @include('customer.partials.base-js')
+<script>
+    (function(){
+        var h = new Date().getHours();
+        var label = (h < 12) ? 'Selamat pagi' : (h < 18 ? 'Selamat sore' : 'Selamat malam');
+        var el = document.getElementById('greetLabel');
+        if (el) el.textContent = label;
+    })();
+</script>
 </html>

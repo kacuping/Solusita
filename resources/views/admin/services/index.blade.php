@@ -36,9 +36,27 @@
                 @csrf
                 <div class="form-row">
                     <div class="form-group col-md-3">
+                        <label for="category">Kategori <span class="text-danger">*</span></label>
+                        <select id="category" name="category" class="form-control" required>
+                            <option value="">Pilih kategori</option>
+                            @foreach(($categoryOptions ?? []) as $cat)
+                                <option value="{{ $cat->name }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group col-md-3">
                         <label for="name">Nama</label>
                         <input type="text" id="name" name="name" class="form-control" required
                             placeholder="Contoh: General Cleaning">
+                    </div>
+                    <div class="form-group col-md-2">
+                        <label for="unit_type">Satuan/QTY</label>
+                        <select id="unit_type" name="unit_type" class="form-control" required>
+                            <option value="M2">M2</option>
+                            <option value="Buah/Seater">Buah/Seater</option>
+                            <option value="Durasi">Durasi</option>
+                            <option value="Satuan" selected>Satuan</option>
+                        </select>
                     </div>
                     <div class="form-group col-md-3">
                         <label for="base_price">Harga Dasar</label>
@@ -51,33 +69,31 @@
                             min="0" step="15" placeholder="Contoh: 60" required>
                     </div>
                     <div class="form-group col-md-2">
-                        <label for="category">Kategori <span class="text-danger">*</span></label>
-                        <input type="text" id="category" name="category" class="form-control"
-                            placeholder="Contoh: General, Karpet, Sofa" required>
-                    </div>
-                    <div class="form-group col-md-2">
-                        <label for="icon">Icon (Preset)</label>
-                        <select id="icon" name="icon" class="form-control">
-                            <option value="">Pilih ikon</option>
-                            <option value="fa-broom">fa-broom (General)</option>
-                            <option value="fa-rug">fa-rug (Karpet)</option>
-                            <option value="fa-couch">fa-couch (Sofa)</option>
-                            <option value="fa-fan">fa-fan (AC)</option>
-                            <option value="fa-shower">fa-shower (Kamar Mandi)</option>
-                            <option value="fa-utensils">fa-utensils (Dapur)</option>
-                            <option value="fa-vacuum">fa-vacuum (Vacuum)</option>
-                            <option value="fa-spray-can">fa-spray-can (Spray)</option>
-                            <option value="fa-bucket">fa-bucket (Bucket)</option>
-                            <option value="fa-mop">fa-mop (Mop)</option>
-                        </select>
-                        <small class="text-muted">Preset ikon Font Awesome. Kosongkan untuk default sesuai kategori.</small>
-                    </div>
-                    <div class="form-group col-md-2">
                         <label for="active">Aktif</label>
                         <select id="active" name="active" class="form-control">
                             <option value="1" selected>Ya</option>
                             <option value="0">Tidak</option>
                         </select>
+                    </div>
+                    @php($icons = ['fa-broom','fa-couch','fa-shower','fa-utensils','fa-spray-can','fa-brush','fa-soap','fa-wind','fa-snowflake'])
+                    <style>
+                        .icon-picker{display:flex;flex-wrap:wrap;gap:8px}
+                        .icon-option{border:1px solid #ddd;border-radius:6px;background:#fff;padding:6px 8px;cursor:pointer}
+                        .icon-option.active{border-color:#2a57c4;box-shadow:0 0 0 2px rgba(42,87,196,.15)}
+                    </style>
+                    <div class="form-group col-md-3">
+                        <label for="icon">Icon</label>
+                        <input type="hidden" id="icon" name="icon" value="">
+                        <div class="icon-picker" data-target="icon">
+                            <button type="button" class="icon-option" data-value="">
+                                <span>Default</span>
+                            </button>
+                            @foreach($icons as $ic)
+                                <button type="button" class="icon-option" data-value="{{ $ic }}">
+                                    <i class="fa {{ $ic }}" style="font-size:18px"></i>
+                                </button>
+                            @endforeach
+                        </div>
                     </div>
                     <div class="form-group col-md-6">
                         <label for="description">Deskripsi</label>
@@ -94,9 +110,10 @@
                         <tr>
                             <th>#</th>
                             <th>Nama</th>
+                            <th>Kategori</th>
+                            <th>Satuan/QTY</th>
                             <th>Harga Dasar</th>
                             <th>Durasi (menit)</th>
-                            <th>Kategori</th>
                             <th>Icon</th>
                             <th>Aktif</th>
                             <th>Deskripsi</th>
@@ -115,6 +132,20 @@
                                         <input type="text" name="name" value="{{ $service->name }}"
                                             class="form-control form-control-sm" style="min-width:180px;">
                                 </td>
+                                <td style="width:200px">
+                                    <select name="category" class="form-control form-control-sm">
+                                        @foreach(($categoryOptions ?? []) as $cat)
+                                            <option value="{{ $cat->name }}" {{ $service->category === $cat->name ? 'selected' : '' }}>{{ $cat->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td style="width:160px">
+                                    <select name="unit_type" class="form-control form-control-sm">
+                                        @foreach(($unitTypes ?? ['M2','Buah/Seater','Durasi','Satuan']) as $ut)
+                                            <option value="{{ $ut }}" {{ ($service->unit_type ?? 'Satuan') === $ut ? 'selected' : '' }}>{{ $ut }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
                                 <td style="width:150px">
                                     <input type="number" name="base_price" value="{{ $service->base_price }}"
                                         class="form-control form-control-sm" min="0" step="1000">
@@ -124,40 +155,13 @@
                                         value="{{ $service->duration_minutes }}" class="form-control form-control-sm"
                                         min="0" step="15">
                                 </td>
-                                <td style="width:160px">
-                                    <input type="text" name="category" value="{{ $service->category }}"
-                                        class="form-control form-control-sm">
-                                </td>
-                                <td style="width:180px">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fa {{ $service->icon ?? 'fa-broom' }} mr-2" style="font-size:18px"></i>
-                                        <select name="icon" class="form-control form-control-sm">
-                                            <option value="" {{ empty($service->icon) ? 'selected' : '' }}>Default
-                                            </option>
-                                            <option value="fa-broom"
-                                                {{ $service->icon === 'fa-broom' ? 'selected' : '' }}>fa-broom</option>
-                                            <option value="fa-rug" {{ $service->icon === 'fa-rug' ? 'selected' : '' }}>
-                                                fa-rug</option>
-                                            <option value="fa-couch"
-                                                {{ $service->icon === 'fa-couch' ? 'selected' : '' }}>fa-couch</option>
-                                            <option value="fa-fan" {{ $service->icon === 'fa-fan' ? 'selected' : '' }}>
-                                                fa-fan</option>
-                                            <option value="fa-shower"
-                                                {{ $service->icon === 'fa-shower' ? 'selected' : '' }}>fa-shower</option>
-                                            <option value="fa-utensils"
-                                                {{ $service->icon === 'fa-utensils' ? 'selected' : '' }}>fa-utensils
-                                            </option>
-                                            <option value="fa-vacuum"
-                                                {{ $service->icon === 'fa-vacuum' ? 'selected' : '' }}>fa-vacuum</option>
-                                            <option value="fa-spray-can"
-                                                {{ $service->icon === 'fa-spray-can' ? 'selected' : '' }}>fa-spray-can
-                                            </option>
-                                            <option value="fa-bucket"
-                                                {{ $service->icon === 'fa-bucket' ? 'selected' : '' }}>fa-bucket</option>
-                                            <option value="fa-mop" {{ $service->icon === 'fa-mop' ? 'selected' : '' }}>
-                                                fa-mop</option>
-                                        </select>
-                                    </div>
+                                <td style="width:200px">
+                                    <select name="icon" class="form-control form-control-sm">
+                                        <option value="" {{ empty($service->icon) ? 'selected' : '' }}>Default</option>
+                                        @foreach(($icons ?? ['fa-broom','fa-couch','fa-shower','fa-utensils','fa-spray-can','fa-brush','fa-soap','fa-wind','fa-snowflake']) as $ic)
+                                            <option value="{{ $ic }}" {{ ($service->icon ?? '') === $ic ? 'selected' : '' }}>{{ $ic }}</option>
+                                        @endforeach
+                                    </select>
                                 </td>
                                 <td style="width:110px">
                                     <select name="active" class="form-control form-control-sm">
@@ -170,14 +174,18 @@
                                         class="form-control form-control-sm" style="min-width:260px;">
                                 </td>
                                 <td>
-                                    <button class="btn btn-primary btn-sm" type="submit">Simpan</button>
+                                    <button class="btn btn-primary btn-sm" type="submit" title="Simpan">
+                                        <i class="fas fa-save"></i>
+                                    </button>
                                     </form>
                                     <form method="POST" action="{{ route('services.destroy', $service) }}"
                                         style="display:inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button class="btn btn-danger btn-sm"
-                                            onclick="return confirm('Hapus layanan ini?')">Hapus</button>
+                                        <button class="btn btn-danger btn-sm" title="Hapus"
+                                            onclick="return confirm('Hapus layanan ini?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
@@ -197,4 +205,46 @@
     <div class="alert alert-info">
         Perubahan pada daftar layanan akan otomatis tampil di dashboard pelanggan (/customer/home) pada bagian "Layanan".
     </div>
+    <script>
+        function bindUnitTypeDisable() {
+            var createUnit = document.getElementById('unit_type');
+            var createDuration = document.getElementById('duration_minutes');
+            var toggle = function(sel, dur){ dur.disabled = sel.value !== 'Durasi'; };
+            if (createUnit && createDuration) {
+                toggle(createUnit, createDuration);
+                createUnit.addEventListener('change', function(){ toggle(createUnit, createDuration); });
+            }
+            document.querySelectorAll('select[name="unit_type"]').forEach(function(s){
+                s.addEventListener('change', function(){
+                    var row = s.closest('tr');
+                    var dur = row ? row.querySelector('input[name="duration_minutes"]') : null;
+                    if (dur) dur.disabled = s.value !== 'Durasi';
+                });
+                var row = s.closest('tr');
+                var dur = row ? row.querySelector('input[name="duration_minutes"]') : null;
+                if (dur) dur.disabled = s.value !== 'Durasi';
+            });
+        }
+        function setIcon(btn){
+            var cell = btn.closest('td');
+            var input = cell.querySelector('input[name="icon"]');
+            cell.querySelectorAll('.icon-option').forEach(function(b){ b.classList.remove('active'); });
+            btn.classList.add('active');
+            if (input) input.value = btn.getAttribute('data-value');
+        }
+        document.addEventListener('DOMContentLoaded', function(){
+            bindUnitTypeDisable();
+            document.querySelectorAll('.icon-picker').forEach(function(p){
+                var target = p.getAttribute('data-target');
+                var input = document.getElementById(target);
+                p.querySelectorAll('.icon-option').forEach(function(b){
+                    b.addEventListener('click', function(){
+                        p.querySelectorAll('.icon-option').forEach(function(x){ x.classList.remove('active'); });
+                        b.classList.add('active');
+                        if (input) input.value = b.getAttribute('data-value');
+                    });
+                });
+            });
+        });
+    </script>
 @endsection

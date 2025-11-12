@@ -229,6 +229,13 @@ Route::middleware('auth')->group(function () {
         'destroy' => 'services.destroy',
     ])->except(['create', 'show', 'edit']);
 
+    Route::resource('service-categories', \App\Http\Controllers\AdminServiceCategoryController::class)->names([
+        'index' => 'service-categories.index',
+        'store' => 'service-categories.store',
+        'update' => 'service-categories.update',
+        'destroy' => 'service-categories.destroy',
+    ])->except(['create', 'show', 'edit']);
+
     // Daftar pelanggan (admin/staff)
     Route::get('/customers', [\App\Http\Controllers\CustomerAdminController::class, 'index'])->name('customers.index');
 

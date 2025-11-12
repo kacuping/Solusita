@@ -28,7 +28,7 @@
 <body>
     <div class="app">
         <div class="header">
-            <div class="title">Semua Layanan</div>
+            <div class="title">{{ ($selectedCategory ?? '') !== '' ? 'Layanan: ' . $selectedCategory : 'Semua Layanan' }}</div>
         </div>
         <div class="content">
             <div class="grid">

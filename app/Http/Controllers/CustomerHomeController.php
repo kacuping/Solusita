@@ -120,11 +120,7 @@ class CustomerHomeController extends Controller
             return $this->isPromotionEligible($promo, $customer, $totalPastBookings);
         })->values();
 
-        // Layanan populer/terdaftar untuk ditampilkan sebagai "Spesialisasi/Layanan"
-        $services = Service::query()
-            ->orderBy('name')
-            ->limit(6)
-            ->get();
+        $categories = \App\Models\ServiceCategory::where('active', true)->orderBy('name')->get();
 
         // Top rated cleaners berdasarkan rata-rata rating dari review via booking
         // Catatan: Pada sebagian environment, kolom nama petugas menggunakan 'full_name' bukan 'name'.
@@ -161,7 +157,7 @@ class CustomerHomeController extends Controller
             'openOrders' => $openOrders,
             'completedOrders' => $completedOrders,
             'activePromotions' => $eligiblePromotions,
-            'services' => $services,
+            'categories' => $categories,
             'topCleaners' => $topCleaners,
         ]);
     }

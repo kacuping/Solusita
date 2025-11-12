@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Service;
+use App\Models\ServiceCategory;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -13,9 +14,9 @@ class CustomerServiceController extends Controller
      */
     private array $categoryIcons = [
         'General' => 'fa-broom',
-        'Karpet' => 'fa-rug',
+        'Karpet' => 'fa-brush',
         'Sofa' => 'fa-couch',
-        'AC' => 'fa-fan',
+        'AC' => 'fa-wind',
         'Dapur' => 'fa-utensils',
         'Kamar Mandi' => 'fa-shower',
         'Lantai' => 'fa-broom',
@@ -26,21 +27,31 @@ class CustomerServiceController extends Controller
      */
     private function computeIconFor(Service $service): string
     {
-        return $service->icon ?: ($this->categoryIcons[$service->category] ?? 'fa-broom');
+        $categoryIcon = null;
+        if ($service->category) {
+            $cat = ServiceCategory::where('name', $service->category)->first();
+            $categoryIcon = $cat?->icon;
+        }
+        return $service->icon ?: ($categoryIcon ?: ($this->categoryIcons[$service->category] ?? 'fa-broom'));
     }
     /**
      * List all active services for customers.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        $services = Service::where('active', true)->orderBy('name')->get();
-        // Attach computed icon attribute for view consumption
+        $category = trim((string) $request->query('category', ''));
+        $query = Service::where('active', true);
+        if ($category !== '') {
+            $query->where('category', $category);
+        }
+        $services = $query->orderBy('name')->get();
         foreach ($services as $srv) {
             $srv->setAttribute('display_icon', $this->computeIconFor($srv));
         }
 
         return view('customer.services.index', [
             'services' => $services,
+            'selectedCategory' => $category,
         ]);
     }
 

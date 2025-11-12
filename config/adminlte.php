@@ -154,7 +154,7 @@ return [
 
     'layout_topnav' => null,
     'layout_boxed' => null,
-    'layout_fixed_sidebar' => null,
+    'layout_fixed_sidebar' => true,
     'layout_fixed_navbar' => null,
     'layout_fixed_footer' => null,
     'layout_dark_mode' => null,
@@ -317,9 +317,20 @@ return [
             'icon' => 'fas fa-fw fa-clipboard-list',
         ],
         [
-            'text' => 'Layanan',
-            'route' => 'services.index',
-            'icon' => 'fas fa-fw fa-broom',
+            'text' => 'Management Layanan',
+            'icon' => 'fas fa-fw fa-cogs',
+            'submenu' => [
+                [
+                    'text' => 'Layanan',
+                    'route' => 'services.index',
+                    'icon' => 'fas fa-fw fa-broom',
+                ],
+                [
+                    'text' => 'Kategori',
+                    'route' => 'service-categories.index',
+                    'icon' => 'fas fa-fw fa-list',
+                ],
+            ],
         ],
         [
             'text' => 'Pelanggan',
