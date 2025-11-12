@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Schema;
 
 class AdminServiceController extends Controller
 {
@@ -28,7 +29,9 @@ class AdminServiceController extends Controller
         }
 
         $services = $query->paginate(15)->withQueryString();
-        $categoryOptions = ServiceCategory::where('active', true)->orderBy('name')->get();
+        $categoryOptions = Schema::hasTable('service_categories')
+            ? ServiceCategory::where('active', true)->orderBy('name')->get()
+            : collect();
 
         // Count distinct active categories to inform admin if below minimum
         $distinctCategoryCount = Service::where('active', true)

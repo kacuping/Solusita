@@ -120,7 +120,9 @@ class CustomerHomeController extends Controller
             return $this->isPromotionEligible($promo, $customer, $totalPastBookings);
         })->values();
 
-        $categories = \App\Models\ServiceCategory::where('active', true)->orderBy('name')->get();
+        $categories = \Illuminate\Support\Facades\Schema::hasTable('service_categories')
+            ? \App\Models\ServiceCategory::where('active', true)->orderBy('name')->get()
+            : collect();
 
         // Top rated cleaners berdasarkan rata-rata rating dari review via booking
         // Catatan: Pada sebagian environment, kolom nama petugas menggunakan 'full_name' bukan 'name'.
