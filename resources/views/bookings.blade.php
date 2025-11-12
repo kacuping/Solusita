@@ -9,7 +9,8 @@
 @section('content')
     <div class="card">
         <div class="card-body">
-            <p class="mb-3">Kelola pesanan/booking layanan kebersihan: daftar, status, penjadwalan, dan penugasan petugas.</p>
+            <p class="mb-3">Kelola pesanan/booking layanan kebersihan: daftar, status, penjadwalan, dan penugasan petugas.
+            </p>
 
             <form method="get" class="row g-2 mb-3">
                 <div class="col-md-3">
@@ -17,14 +18,16 @@
                     <select name="status" id="status" class="form-control">
                         <option value="">Semua</option>
                         @php($statuses = ['pending' => 'Pending', 'scheduled' => 'Terjadwal', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'])
-                        @foreach($statuses as $key => $label)
-                            <option value="{{ $key }}" {{ request('status') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                        @foreach ($statuses as $key => $label)
+                            <option value="{{ $key }}" {{ request('status') === $key ? 'selected' : '' }}>
+                                {{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
                 <div class="col-md-4">
                     <label for="q" class="form-label">Cari (nama/email pelanggan)</label>
-                    <input type="text" name="q" id="q" class="form-control" value="{{ request('q') }}" placeholder="Ketik untuk mencari...">
+                    <input type="text" name="q" id="q" class="form-control" value="{{ request('q') }}"
+                        placeholder="Ketik untuk mencari...">
                 </div>
                 <div class="col-md-2 align-self-end">
                     <button class="btn btn-primary w-100" type="submit">Filter</button>
@@ -34,7 +37,7 @@
                 </div>
             </form>
 
-            @if(isset($bookings) && $bookings->count())
+            @if (isset($bookings) && $bookings->count())
                 <div class="table-responsive">
                     <table class="table table-striped">
                         <thead>
@@ -47,10 +50,11 @@
                                 <th>Status</th>
                                 <th>Total</th>
                                 <th>Bayar</th>
+                                <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($bookings as $booking)
+                            @foreach ($bookings as $booking)
                                 <tr>
                                     <td>{{ $booking->id }}</td>
                                     <td>
@@ -59,10 +63,49 @@
                                     </td>
                                     <td>{{ optional($booking->service)->name ?? '-' }}</td>
                                     <td>{{ optional($booking->scheduled_at)->format('d M Y H:i') }}</td>
-                                    <td>{{ optional($booking->cleaner)->full_name ?? optional($booking->cleaner)->name ?? '-' }}</td>
+                                    <td>{{ optional($booking->cleaner)->full_name ?? (optional($booking->cleaner)->name ?? '-') }}
+                                    </td>
                                     <td><span class="badge bg-info">{{ $booking->status }}</span></td>
-                                    <td>Rp {{ number_format((float)$booking->total_amount, 0, ',', '.') }}</td>
+                                    <td>Rp {{ number_format((float) $booking->total_amount, 0, ',', '.') }}</td>
                                     <td>{{ $booking->payment_status }}</td>
+                                    <td>
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <form method="POST" action="{{ route('bookings.assign', $booking) }}"
+                                                class="form-inline d-flex align-items-center" style="gap:.5rem;">
+                                                @csrf
+                                                @method('PATCH')
+                                                <select name="cleaner_id" class="form-control form-control-sm"
+                                                    style="min-width:160px;">
+                                                    <option value="">-- Pilih Petugas --</option>
+                                                    @foreach ($cleaners ?? [] as $c)
+                                                        <option value="{{ $c->id }}"
+                                                            {{ (int) optional($booking->cleaner)->id === (int) $c->id ? 'selected' : '' }}>
+                                                            {{ $c->full_name ?? $c->name }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                                <button class="btn btn-sm btn-outline-primary"
+                                                    type="submit">Assign</button>
+                                            </form>
+
+                                            <form method="POST" action="{{ route('bookings.status', $booking) }}"
+                                                class="form-inline d-flex align-items-center" style="gap:.5rem;">
+                                                @csrf
+                                                @method('PATCH')
+                                                @php($statusOptions = ['pending' => 'Pending', 'scheduled' => 'Terjadwal', 'in_progress' => 'Berjalan', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'])
+                                                <select name="status" class="form-control form-control-sm"
+                                                    style="min-width:160px;">
+                                                    @foreach ($statusOptions as $key => $label)
+                                                        <option value="{{ $key }}"
+                                                            {{ $booking->status === $key ? 'selected' : '' }}>
+                                                            {{ $label }}</option>
+                                                    @endforeach
+                                                </select>
+                                                <button class="btn btn-sm btn-outline-success"
+                                                    type="submit">Update</button>
+                                            </form>
+                                        </div>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

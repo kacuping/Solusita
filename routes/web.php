@@ -174,9 +174,34 @@ Route::middleware('auth')->group(function () {
         }
 
         $bookings = $query->paginate(15)->withQueryString();
+        $cleaners = \App\Models\Cleaner::where('active', true)->orderBy('full_name')->get();
 
-        return view('bookings', compact('bookings'));
+        return view('bookings', compact('bookings', 'cleaners'));
     })->name('bookings.index');
+
+    // Assign petugas untuk booking
+    Route::patch('/bookings/{booking}/assign', function (Request $request, \App\Models\Booking $booking) {
+        $data = $request->validate([
+            'cleaner_id' => ['nullable','exists:cleaners,id'],
+        ]);
+        $booking->cleaner_id = $data['cleaner_id'] ?? null;
+        // Opsional: ketika assign, ubah status menjadi 'scheduled' jika masih pending
+        if ($booking->status === 'pending' && ($booking->cleaner_id !== null)) {
+            $booking->status = 'scheduled';
+        }
+        $booking->save();
+        return back()->with('success', 'Petugas berhasil di-assign untuk booking #'.$booking->id);
+    })->name('bookings.assign');
+
+    // Ubah status booking
+    Route::patch('/bookings/{booking}/status', function (Request $request, \App\Models\Booking $booking) {
+        $data = $request->validate([
+            'status' => ['required','in:pending,scheduled,in_progress,completed,cancelled'],
+        ]);
+        $booking->status = $data['status'];
+        $booking->save();
+        return back()->with('success', 'Status booking #'.$booking->id.' diperbarui.');
+    })->name('bookings.status');
 
     // Manajemen layanan (admin/staff)
     Route::resource('services', \App\Http\Controllers\AdminServiceController::class)->names([

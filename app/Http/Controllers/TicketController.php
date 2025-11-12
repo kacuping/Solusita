@@ -76,6 +76,18 @@ class TicketController extends Controller
             'cleaner_id' => ['nullable','exists:cleaners,id'],
         ]);
         $ticket->update(['cleaner_id' => $data['cleaner_id']]);
+        // Sinkronkan ke booking terkait (jika ada)
+        if ($ticket->booking_id && $data['cleaner_id']) {
+            $booking = $ticket->booking; // eager loaded di show/index, atau akan lazy load di sini
+            if ($booking) {
+                $booking->cleaner_id = $data['cleaner_id'];
+                // Jika status booking masih pending, ubah ke scheduled
+                if ($booking->status === 'pending') {
+                    $booking->status = 'scheduled';
+                }
+                $booking->save();
+            }
+        }
         return redirect()->route('support.show', $ticket)->with('success', 'Tiket telah di-assign.');
     }
 
@@ -104,4 +116,3 @@ class TicketController extends Controller
         return redirect()->route('support.show', $ticket)->with('success', 'Lampiran dihapus.');
     }
 }
-
