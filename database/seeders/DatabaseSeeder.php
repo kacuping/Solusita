@@ -8,6 +8,7 @@ use Illuminate\Database\Seeder;
 use Database\Seeders\AuthorizationSeeder;
 use Database\Seeders\DefaultServicesSeeder;
 use Database\Seeders\AdminUserSeeder;
+use Database\Seeders\ServiceCategorySeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -21,6 +22,7 @@ class DatabaseSeeder extends Seeder
         // Jalankan seeder inti aplikasi untuk production
         $this->call([
             AuthorizationSeeder::class,
+            ServiceCategorySeeder::class,
             DefaultServicesSeeder::class,
             AdminUserSeeder::class,
         ]);
