@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
     <title>Semua Layanan</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    @include('customer.partials.base-css')
     <style>
         :root { --bg:#f2f6ff; --primary:#4b88ff; --text:#1f2d3d; --muted:#7b8ca6; --card:#fff; --shadow:0 10px 20px rgba(0,0,0,.08); }
         body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial; background: var(--bg); }
-        .app { max-width:420px; margin:0 auto; min-height:100vh; padding-bottom:64px; }
+        .app { max-width:420px; margin:0 auto; min-height:100vh; }
         .header { background: linear-gradient(180deg, #6aa4ff 0%, #9ec1ff 100%); color:#fff; padding:20px 16px; }
         .title { font-weight:700; font-size:20px; }
         .content { padding: 16px; }
@@ -47,4 +48,5 @@
         </div>
     </div>
 </body>
+@include('customer.partials.base-js')
 </html>

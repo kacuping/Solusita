@@ -5,7 +5,7 @@
     </a>
     <a href="{{ route('customer.schedule') }}" class="item {{ \Illuminate\Support\Facades\Route::is('customer.schedule') ? 'active' : '' }}">
         <div class="ico"><i class="fa-regular fa-clock"></i></div>
-        Jadwal
+        Order
     </a>
     <a href="#" class="item">
         <div class="ico"><i class="fa-regular fa-bell"></i></div>

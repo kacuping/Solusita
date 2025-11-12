@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\CustomerHomeController;
+use App\Http\Controllers\CustomerHelpController;
 use App\Http\Controllers\CustomerRegistrationController;
 use App\Http\Controllers\CustomerServiceController;
 use App\Http\Controllers\ProfileController;
@@ -37,6 +38,9 @@ Route::prefix('customer')->group(function () {
     // Grup halaman pelanggan terproteksi dengan middleware khusus role 'customer'
     Route::middleware(['auth', 'verified', 'customer'])->group(function () {
         Route::get('/home', [CustomerHomeController::class, 'index'])->name('customer.home');
+        // Helpdesk khusus customer (tidak melalui /support/create)
+        Route::get('/help', [CustomerHelpController::class, 'create'])->name('customer.help.create');
+        Route::post('/help', [CustomerHelpController::class, 'store'])->name('customer.help.store');
         Route::get('/services', [CustomerServiceController::class, 'index'])->name('customer.services.index');
         Route::get('/service/{slug}', [CustomerServiceController::class, 'show'])->name('customer.service.show');
         // Pemesanan layanan (create & store)
@@ -98,6 +102,20 @@ Route::prefix('customer')->group(function () {
 
             return view('customer.schedule', compact('bookings', 'customer'));
         })->name('customer.schedule');
+        // Simple JSON notifications endpoint for polling
+        Route::get('/notifications', function () {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->first();
+            $query = \App\Models\Booking::where('customer_id', optional($customer)->id);
+            $openOrders = (clone $query)->whereIn('status', ['pending','scheduled','in_progress'])->count();
+            $completedOrders = (clone $query)->where('status', 'completed')->count();
+            $lastChange = (clone $query)->orderByDesc('updated_at')->value('updated_at');
+            return response()->json([
+                'open_orders' => $openOrders,
+                'completed_orders' => $completedOrders,
+                'last_change_at' => optional($lastChange)->toIso8601String(),
+            ]);
+        })->name('customer.notifications');
         // Update profil pelanggan (inline edit)
         Route::post('/profile/update', function (Request $request) {
             $user = auth()->user();

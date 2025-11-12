@@ -73,7 +73,9 @@ class CustomerHomeController extends Controller
 
         $nextBooking = null;
         $upcomingBookings = collect();
-        $totalPastBookings = 0;
+        $totalPastBookings = 0; // legacy count by time (kept for backward compatibility)
+        $openOrders = 0;        // pesanan aktif (pending/scheduled/in_progress)
+        $completedOrders = 0;   // pesanan selesai berdasarkan status
 
         if ($customer) {
             $upcomingBookings = Booking::with(['service', 'cleaner'])
@@ -85,8 +87,18 @@ class CustomerHomeController extends Controller
 
             $nextBooking = $upcomingBookings->first();
 
+            // Count by time (past) — not used in UI anymore
             $totalPastBookings = Booking::where('customer_id', $customer->id)
                 ->where('scheduled_at', '<', now())
+                ->count();
+
+            // Count by status for dynamic Order & Pesanan Selesai
+            $openOrders = Booking::where('customer_id', $customer->id)
+                ->whereIn('status', ['pending','scheduled','in_progress'])
+                ->count();
+
+            $completedOrders = Booking::where('customer_id', $customer->id)
+                ->where('status', 'completed')
                 ->count();
         }
 
@@ -119,7 +131,7 @@ class CustomerHomeController extends Controller
         // Kita deteksi kolom mana yang ada untuk kompatibilitas lintas environment, dan alias sebagai 'name'.
         $nameColumn = Schema::hasColumn('cleaners', 'full_name') ? 'full_name' : 'name';
 
-        $topCleaners = DB::table('cleaners')
+        $topCleanersRaw = DB::table('cleaners')
             ->leftJoin('bookings', 'bookings.cleaner_id', '=', 'cleaners.id')
             ->leftJoin('reviews', 'reviews.booking_id', '=', 'bookings.id')
             ->select(
@@ -136,11 +148,18 @@ class CustomerHomeController extends Controller
             ->limit(5)
             ->get();
 
+        // Filter: tampilkan hanya jika rating rata-rata > 1 bintang
+        $topCleaners = collect($topCleanersRaw)->filter(function($c){
+            return (float)($c->avg_rating ?? 0) > 1.0;
+        })->values();
+
         return view('customer.home', [
             'customer' => $customer,
             'nextBooking' => $nextBooking,
             'upcomingBookings' => $upcomingBookings,
             'totalPastBookings' => $totalPastBookings,
+            'openOrders' => $openOrders,
+            'completedOrders' => $completedOrders,
             'activePromotions' => $eligiblePromotions,
             'services' => $services,
             'topCleaners' => $topCleaners,

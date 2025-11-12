@@ -22,13 +22,9 @@
             <form method="POST" action="{{ route('support.store') }}">
                 @csrf
                 <div class="form-row">
-                    <div class="form-group col-md-4">
-                        <label for="customer_id">ID Pelanggan</label>
-                        <input type="number" name="customer_id" id="customer_id" class="form-control" value="{{ old('customer_id') }}" required>
-                    </div>
-                    <div class="form-group col-md-4">
-                        <label for="booking_id">ID Booking (opsional)</label>
-                        <input type="number" name="booking_id" id="booking_id" class="form-control" value="{{ old('booking_id') }}">
+                    <div class="form-group col-md-6">
+                        <label for="booking_id">ID Booking</label>
+                        <input type="number" name="booking_id" id="booking_id" class="form-control" value="{{ old('booking_id') }}" required>
                     </div>
                     <div class="form-group col-md-4">
                         <label for="cleaner_id">Assign ke Petugas (opsional)</label>
@@ -69,4 +65,3 @@
         </div>
     </div>
 @stop
-

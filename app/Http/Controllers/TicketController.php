@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ticket;
+use App\Models\Booking;
 use App\Models\Cleaner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -36,18 +37,26 @@ class TicketController extends Controller
 
     public function store(Request $request)
     {
+        // Admin membuat tiket: hanya membutuhkan booking_id, tanpa mengisi customer_id secara manual.
         $data = $request->validate([
-            'customer_id' => ['required','exists:customers,id'],
-            'booking_id' => ['nullable','exists:bookings,id'],
+            'booking_id' => ['required','exists:bookings,id'],
             'cleaner_id' => ['nullable','exists:cleaners,id'],
             'subject' => ['required','string','max:150'],
             'message' => ['required','string'],
             'priority' => ['required','in:low,medium,high'],
         ]);
 
-        $data['status'] = 'open';
+        $booking = Booking::findOrFail($data['booking_id']);
 
-        $ticket = Ticket::create($data);
+        $ticket = Ticket::create([
+            'customer_id' => $booking->customer_id,
+            'booking_id' => $booking->id,
+            'cleaner_id' => $data['cleaner_id'] ?? null,
+            'subject' => $data['subject'],
+            'message' => $data['message'],
+            'priority' => $data['priority'],
+            'status' => 'open',
+        ]);
 
         return redirect()->route('support.show', $ticket)->with('success', 'Tiket dibuat.');
     }

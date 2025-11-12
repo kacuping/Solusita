@@ -7,6 +7,7 @@
     <title>Beranda Pelanggan</title>
     <!-- Font Awesome for service icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    @include('customer.partials.base-css')
     <style>
         :root {
             --bg: #f2f6ff;
@@ -21,7 +22,7 @@
         body {
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-            background: linear-gradient(180deg, #6aa4ff 0%, #9ec1ff 35%, var(--bg) 35%);
+            background: var(--bg);
         }
 
         .app {
@@ -30,17 +31,60 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            position: relative; /* untuk menempatkan bg-extend di belakang konten */
         }
 
+        /* Samakan bentuk header dengan halaman profil (kecuali warna) */
         .header {
-            padding: 24px 18px 60px;
+            position: relative;
             color: #fff;
+            background: transparent; /* hapus gradien pertama, gunakan bg-extend saja */
+            padding: 32px 18px 48px; /* tetap sama untuk tata letak */
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+            box-shadow: none; /* bayangan cukup dari .bg-extend */
+        }
+        /* Perpanjang gradien di belakang konten hingga tepat di atas label Layanan */
+        .bg-extend {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 220px; /* disesuaikan via JS agar berhenti tepat di atas label Layanan */
+            background: linear-gradient(135deg, #6aa4ff 0%, #9ec1ff 100%);
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+            box-shadow: 0 12px 24px rgba(75, 136, 255, 0.25);
+            z-index: -1; /* selalu di belakang */
         }
 
         .greeting {
             font-weight: 600;
             font-size: 20px;
             margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .notif-bell {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.25);
+            color: #fff;
+        }
+        .notif-dot {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff3b30; /* iOS style red */
+            display: none;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.6);
         }
 
         .search {
@@ -144,14 +188,12 @@
             margin-left: 6px;
         }
 
-        /* Bottom Navigation (disamakan dengan profil) */
-        .footer {
-            margin: 0 0 12px;
-        }
+        /* Bottom Navigation: fixed agar tidak bergerak saat scroll */
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; }
 
         .footer .bar {
             max-width: 420px;
-            margin: 0 auto;
+            margin: 0 auto 8px;
             display: flex;
             justify-content: space-between;
             background: #ffffff;
@@ -203,7 +245,7 @@
 
 
         .status {
-            margin: -40px 16px 8px;
+            margin: 10px 16px 8px; /* pastikan berada di bawah header (tidak tertutup gradien) */
             background: var(--card);
             border-radius: 16px;
             padding: 12px;
@@ -261,6 +303,18 @@
             text-decoration: none;
             box-shadow: var(--shadow);
         }
+
+        /* Help label (tautan ringan) */
+        .help-row {
+            text-align: right;
+            margin: 6px 16px 0;
+        }
+        .help-link {
+            color: #d32f2f; /* merah */
+            text-decoration: underline;
+            font-size: 13px;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -273,12 +327,19 @@
             $hour = (int) now()->format('H');
             $greet = $hour < 12 ? 'Selamat pagi' : ($hour < 18 ? 'Selamat sore' : 'Selamat malam');
             ?>
-            <div class="greeting">{{ $greet }}, {{ $firstName }}</div>
+            <div class="greeting">
+                <span>{{ $greet }}, {{ $firstName }}</span>
+                <span id="notifBell" class="notif-bell" aria-label="Notifikasi">
+                    <i class="fa-regular fa-bell"></i>
+                </span>
+            </div>
             <div class="search">
                 <span style="margin-right:8px; color:#9aa6c2">🔍</span>
                 <input type="text" placeholder="Cari layanan, jadwal, promo" />
             </div>
         </div>
+        <!-- Wave dihapus agar bentuk mengikuti header profil yang ber-radius bawah -->
+        <div class="bg-extend" aria-hidden="true"></div>
 
         @if (!$customer)
             <div class="warning">Profil pelanggan belum ditemukan. Silakan lengkapi data di menu Akun.</div>
@@ -287,13 +348,18 @@
         <!-- Ringkas status -->
         <div class="status">
             <div class="title">Ringkasan</div>
-            <div class="line"><span>Jadwal mendatang</span><span>{{ $upcomingBookings->count() }}</span></div>
-            <div class="line"><span>Pesanan selesai</span><span>{{ $totalPastBookings }}</span></div>
+            <div class="line"><span>Order</span><span>{{ $openOrders }}</span></div>
+            @if(($completedOrders ?? 0) > 0)
+            <div class="line"><span>Pesanan Selesai</span><span>{{ $completedOrders }}</span></div>
+            @endif
             @if ($nextBooking)
                 <div class="line">
                     <span>Terdekat</span><span>{{ optional($nextBooking->scheduled_at)->format('d M Y H:i') }}</span>
                 </div>
             @endif
+        </div>
+        <div class="help-row">
+            <a class="help-link" href="{{ route('customer.help.create') }}">Butuh bantuan?</a>
         </div>
 
         <div class="content">
@@ -366,4 +432,5 @@
     </div>
 </body>
 
+@include('customer.partials.base-js')
 </html>
