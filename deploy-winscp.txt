@@ -1,0 +1,1 @@
+open sftp://u368483691:azkadiba3acci%401@46.202.186.81:22 -hostkey="*"
