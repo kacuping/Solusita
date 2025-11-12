@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\Promotion;
 use App\Models\Service;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 
@@ -114,11 +115,22 @@ class CustomerHomeController extends Controller
             ->get();
 
         // Top rated cleaners berdasarkan rata-rata rating dari review via booking
+        // Catatan: Pada sebagian environment, kolom nama petugas menggunakan 'full_name' bukan 'name'.
+        // Kita deteksi kolom mana yang ada untuk kompatibilitas lintas environment, dan alias sebagai 'name'.
+        $nameColumn = Schema::hasColumn('cleaners', 'full_name') ? 'full_name' : 'name';
+
         $topCleaners = DB::table('cleaners')
             ->leftJoin('bookings', 'bookings.cleaner_id', '=', 'cleaners.id')
             ->leftJoin('reviews', 'reviews.booking_id', '=', 'bookings.id')
-            ->select('cleaners.id', 'cleaners.name', 'cleaners.phone', 'cleaners.address', DB::raw('AVG(reviews.rating) as avg_rating'), DB::raw('COUNT(reviews.id) as review_count'))
-            ->groupBy('cleaners.id', 'cleaners.name', 'cleaners.phone', 'cleaners.address')
+            ->select(
+                'cleaners.id',
+                DB::raw("cleaners.".$nameColumn." as name"),
+                'cleaners.phone',
+                'cleaners.address',
+                DB::raw('AVG(reviews.rating) as avg_rating'),
+                DB::raw('COUNT(reviews.id) as review_count')
+            )
+            ->groupBy('cleaners.id', DB::raw('cleaners.' . $nameColumn), 'cleaners.phone', 'cleaners.address')
             ->orderByDesc(DB::raw('AVG(reviews.rating)'))
             ->orderByDesc(DB::raw('COUNT(reviews.id)'))
             ->limit(5)
