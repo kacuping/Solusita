@@ -34,8 +34,8 @@
                         @forelse($customers as $index => $customer)
                             <tr>
                                 <td>{{ ($customers->currentPage() - 1) * $customers->perPage() + $index + 1 }}</td>
-                                <td>{{ $customer->name }}</td>
-                                <td>{{ $customer->email }}</td>
+                                <td>{{ optional($customer->user)->name ?? $customer->name }}</td>
+                                <td>{{ optional($customer->user)->email ?? $customer->email }}</td>
                                 <td>{{ $customer->phone ?? '-' }}</td>
                                 <td>{{ $customer->address ?? '-' }}</td>
                                 <td>{{ optional($customer->created_at)->format('d M Y H:i') }}</td>
@@ -53,4 +53,3 @@
         </div>
     </div>
 @endsection
-

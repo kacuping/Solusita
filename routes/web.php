@@ -131,9 +131,11 @@ Route::prefix('customer')->group(function () {
 
             if (array_key_exists('name', $validated)) {
                 $user->name = $validated['name'];
+                $customer->name = $validated['name'];
             }
             if (array_key_exists('email', $validated)) {
                 $user->email = $validated['email'];
+                $customer->email = $validated['email'];
             }
             $user->save();
 
