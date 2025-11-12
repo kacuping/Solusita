@@ -29,33 +29,44 @@
             max-width: 420px;
             margin: 0 auto;
             /* Gunakan unit viewport dinamis agar tidak muncul scroll mikro di mobile */
-            min-height: 100vh; /* fallback */
-            min-height: 100dvh; /* modern browsers */
+            min-height: 100vh;
+            /* fallback */
+            min-height: 100dvh;
+            /* modern browsers */
             display: flex;
             flex-direction: column;
-            position: relative; /* untuk menempatkan bg-extend di belakang konten */
+            position: relative;
+            /* untuk menempatkan bg-extend di belakang konten */
         }
 
         /* Samakan bentuk header dengan halaman profil (kecuali warna) */
         .header {
             position: relative;
             color: #fff;
-            background: transparent; /* hapus gradien pertama, gunakan bg-extend saja */
-            padding: 32px 18px 48px; /* tetap sama untuk tata letak */
+            background: transparent;
+            /* hapus gradien pertama, gunakan bg-extend saja */
+            padding: 32px 18px 24px;
+            /* tetap sama untuk tata letak */
             border-bottom-left-radius: 24px;
             border-bottom-right-radius: 24px;
-            box-shadow: none; /* bayangan cukup dari .bg-extend */
+            box-shadow: none;
+            /* bayangan cukup dari .bg-extend */
         }
+
         /* Perpanjang gradien di belakang konten hingga tepat di atas label Layanan */
         .bg-extend {
             position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 220px; /* disesuaikan via JS agar berhenti tepat di atas label Layanan */
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 220px;
+            /* disesuaikan via JS agar berhenti tepat di atas label Layanan */
             background: linear-gradient(135deg, #6aa4ff 0%, #9ec1ff 100%);
             border-bottom-left-radius: 24px;
             border-bottom-right-radius: 24px;
             box-shadow: 0 12px 24px rgba(75, 136, 255, 0.25);
-            z-index: -1; /* selalu di belakang */
+            z-index: -1;
+            /* selalu di belakang */
         }
 
         .greeting {
@@ -66,9 +77,24 @@
             align-items: center;
             justify-content: space-between;
         }
-        .greet-text { display:flex; flex-direction:column; }
-        #greetLabel { font-weight:600; font-size:20px; line-height:1.1; }
-        #greetName { font-size:14px; font-weight:500; opacity:.9; }
+
+        .greet-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #greetLabel {
+            font-weight: 600;
+            font-size: 20px;
+            line-height: 1.1;
+        }
+
+        #greetName {
+            font-size: 14px;
+            font-weight: 500;
+            opacity: .9;
+        }
+
         .notif-bell {
             position: relative;
             display: inline-flex;
@@ -77,9 +103,10 @@
             width: 28px;
             height: 28px;
             border-radius: 50%;
-            background: rgba(255,255,255,0.25);
+            background: rgba(255, 255, 255, 0.25);
             color: #fff;
         }
+
         .notif-dot {
             position: absolute;
             top: 2px;
@@ -87,9 +114,10 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #ff3b30; /* iOS style red */
+            background: #ff3b30;
+            /* iOS style red */
             display: none;
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.6);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
         }
 
         .search {
@@ -195,7 +223,12 @@
         }
 
         /* Bottom Navigation: fixed agar tidak bergerak saat scroll */
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
 
         .footer .bar {
             max-width: 420px;
@@ -251,25 +284,26 @@
 
 
         .status {
-            margin: 10px 16px 8px; /* pastikan berada di bawah header (tidak tertutup gradien) */
-            background: var(--card);
-            border-radius: 16px;
-            padding: 12px;
-            box-shadow: var(--shadow);
+            margin: 6px 18px 0;
+            padding: 0;
+            background: transparent;
+            border-radius: 0;
+            box-shadow: none;
         }
 
         .status .title {
-            color: var(--text);
+            color: #fff;
             font-weight: 600;
-            margin-bottom: 6px;
+            font-size: 12px;
+            margin: 2px 0;
         }
 
         .status .line {
             display: flex;
             justify-content: space-between;
-            font-size: 13px;
-            color: var(--muted);
-            margin: 4px 0;
+            font-size: 12px;
+            color: #fff;
+            margin: 2px 0;
         }
 
         /* Promo ditampilkan vertikal (ke bawah) */
@@ -315,8 +349,10 @@
             text-align: right;
             margin: 6px 16px 0;
         }
+
         .help-link {
-            color: #d32f2f; /* merah */
+            color: #d32f2f;
+            /* merah */
             text-decoration: underline;
             font-size: 13px;
             font-weight: 600;
@@ -354,12 +390,12 @@
             <div class="warning">Profil pelanggan belum ditemukan. Silakan lengkapi data di menu Akun.</div>
         @endif
 
-        <!-- Ringkas status -->
+        <!-- Ringkasan sebagai label di bawah kolom cari -->
         <div class="status">
             <div class="title">Ringkasan</div>
             <div class="line"><span>Order</span><span>{{ $openOrders }}</span></div>
-            @if(($completedOrders ?? 0) > 0)
-            <div class="line"><span>Pesanan Selesai</span><span>{{ $completedOrders }}</span></div>
+            @if (($completedOrders ?? 0) > 0)
+                <div class="line"><span>Pesanan Selesai</span><span>{{ $completedOrders }}</span></div>
             @endif
             @if ($nextBooking)
                 <div class="line">
@@ -397,6 +433,10 @@
                 @empty
                     <div class="tile" style="grid-column: span 3;">Belum ada kategori.</div>
                 @endforelse
+            </div>
+            <div style="text-align:right; margin-top:8px;">
+                <a href="{{ route('customer.categories.index') }}"
+                    style="color:#2a57c4; font-weight:500; font-size:11px; text-decoration:none;">Lihat Semua</a>
             </div>
 
             <div class="section-title" style="margin-top: 22px">Petugas Terbaik</div>
@@ -442,11 +482,12 @@
 
 @include('customer.partials.base-js')
 <script>
-    (function(){
+    (function() {
         var h = new Date().getHours();
         var label = (h < 12) ? 'Selamat pagi' : (h < 18 ? 'Selamat sore' : 'Selamat malam');
         var el = document.getElementById('greetLabel');
         if (el) el.textContent = label;
     })();
 </script>
+
 </html>

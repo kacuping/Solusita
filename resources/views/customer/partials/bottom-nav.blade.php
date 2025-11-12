@@ -8,8 +8,8 @@
         Order
     </a>
     <a href="#" class="item">
-        <div class="ico"><i class="fa-regular fa-bell"></i></div>
-        Notif
+        <div class="ico"><i class="fa-solid fa-credit-card"></i></div>
+        Pembayaran
     </a>
     <a href="{{ route('customer.profile') }}" class="item {{ \Illuminate\Support\Facades\Route::is('customer.profile') ? 'active' : '' }}">
         <div class="ico"><i class="fa-regular fa-user"></i></div>

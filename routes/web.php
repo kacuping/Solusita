@@ -43,6 +43,13 @@ Route::prefix('customer')->group(function () {
         Route::post('/help', [CustomerHelpController::class, 'store'])->name('customer.help.store');
         Route::get('/services', [CustomerServiceController::class, 'index'])->name('customer.services.index');
         Route::get('/service/{slug}', [CustomerServiceController::class, 'show'])->name('customer.service.show');
+        Route::get('/categories', function () {
+            $categories = \Illuminate\Support\Facades\Schema::hasTable('service_categories')
+                ? \App\Models\ServiceCategory::where('active', true)->orderBy('name')->get()
+                : collect();
+
+            return view('customer.categories.index', compact('categories'));
+        })->name('customer.categories.index');
         // Pemesanan layanan (create & store)
         Route::get('/order/{slug}', function ($slug) {
             $service = \App\Models\Service::where('slug', $slug)->firstOrFail();
