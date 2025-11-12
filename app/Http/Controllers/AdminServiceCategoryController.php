@@ -36,6 +36,9 @@ class AdminServiceCategoryController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        if (! Schema::hasTable('service_categories')) {
+            return back()->with('status', 'Tabel Kategori belum tersedia di server. Jalankan migrasi: php artisan migrate --force');
+        }
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', 'unique:service_categories,name'],
             'icon' => ['nullable', 'string', 'max:100'],
@@ -51,6 +54,9 @@ class AdminServiceCategoryController extends Controller
 
     public function update(Request $request, ServiceCategory $service_category): RedirectResponse
     {
+        if (! Schema::hasTable('service_categories')) {
+            return back()->with('status', 'Tabel Kategori belum tersedia di server. Jalankan migrasi: php artisan migrate --force');
+        }
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', 'unique:service_categories,name,'.$service_category->id],
             'icon' => ['nullable', 'string', 'max:100'],
