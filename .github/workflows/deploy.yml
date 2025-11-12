@@ -56,11 +56,12 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # Gunakan FTPS (TLS) pada port standar 21
-          protocol: ftps
+          # Beberapa server Hostinger menutup koneksi FTPS modern.
+          # Gunakan ftps-legacy untuk kompatibilitas yang lebih baik.
+          protocol: ftps-legacy
           port: 21
           # Perpanjang timeout untuk sesi upload besar (mis. folder vendor)
-          timeout: 900000 # 15 menit
+          timeout: 600000 # 10 menit
           # Tingkatkan detail log untuk troubleshooting (minimal|standard|verbose)
           log-level: verbose
           # Banyak akun Hostinger menempatkan root di public_html.
@@ -72,6 +73,7 @@ jobs:
             **/.git*
             **/.github/**
             **/node_modules/**
+            **/vendor/**
             **/tests/**
             **/.idea/**
             **/.vscode/**
