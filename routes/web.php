@@ -1,14 +1,14 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\UserController;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\CustomerAuthController;
 use App\Http\Controllers\CustomerHomeController;
 use App\Http\Controllers\CustomerRegistrationController;
 use App\Http\Controllers\CustomerServiceController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 // Solusita: jadikan root sebagai Dashboard terproteksi
 Route::get('/', function () {
@@ -17,6 +17,7 @@ Route::get('/', function () {
     if ($user && ($user->role ?? null) === 'customer') {
         return redirect()->route('customer.home');
     }
+
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -46,6 +47,7 @@ Route::prefix('customer')->group(function () {
                 'name' => $user->name,
                 'email' => $user->email,
             ]);
+
             return view('customer.order', compact('service', 'customer'));
         })->name('customer.order.create');
         Route::post('/order', function (\Illuminate\Http\Request $request) {
@@ -83,7 +85,8 @@ Route::prefix('customer')->group(function () {
         Route::get('/profile', function () {
             $user = auth()->user();
             $customer = \App\Models\Customer::where('user_id', $user->id)->first();
-            return view('customer.account', compact('user','customer'));
+
+            return view('customer.account', compact('user', 'customer'));
         })->name('customer.profile');
         // Jadwal pelanggan (versi mobile sederhana)
         Route::get('/schedule', function () {
@@ -92,6 +95,7 @@ Route::prefix('customer')->group(function () {
             $bookings = \App\Models\Booking::where('customer_id', optional($customer)->id)
                 ->orderBy('scheduled_at', 'asc')
                 ->get();
+
             return view('customer.schedule', compact('bookings', 'customer'));
         })->name('customer.schedule');
         // Update profil pelanggan (inline edit)
@@ -107,8 +111,12 @@ Route::prefix('customer')->group(function () {
                 'dob' => 'nullable|date',
             ]);
 
-            if (array_key_exists('name', $validated)) { $user->name = $validated['name']; }
-            if (array_key_exists('email', $validated)) { $user->email = $validated['email']; }
+            if (array_key_exists('name', $validated)) {
+                $user->name = $validated['name'];
+            }
+            if (array_key_exists('email', $validated)) {
+                $user->email = $validated['email'];
+            }
             $user->save();
 
             $customer->phone = $validated['phone'] ?? $customer->phone;
@@ -145,9 +153,29 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Solusita: menu utama terproteksi
-    Route::get('/bookings', function () {
-        return view('bookings');
+    // Solusita: daftar pesanan/booking
+    Route::get('/bookings', function (Request $request) {
+        $query = \App\Models\Booking::query()
+            ->with(['customer', 'service', 'cleaner'])
+            ->orderByDesc('created_at');
+
+        // Optional filter via query string ?status=pending|scheduled|completed|cancelled
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        // Optional filter by customer name/email
+        if ($request->filled('q')) {
+            $q = trim($request->string('q'));
+            $query->whereHas('customer', function ($sub) use ($q) {
+                $sub->where('name', 'like', "%$q%")
+                    ->orWhere('email', 'like', "%$q%");
+            });
+        }
+
+        $bookings = $query->paginate(15)->withQueryString();
+
+        return view('bookings', compact('bookings'));
     })->name('bookings.index');
 
     // Manajemen layanan (admin/staff)
@@ -156,7 +184,7 @@ Route::middleware('auth')->group(function () {
         'store' => 'services.store',
         'update' => 'services.update',
         'destroy' => 'services.destroy',
-    ])->except(['create','show','edit']);
+    ])->except(['create', 'show', 'edit']);
 
     // Daftar pelanggan (admin/staff)
     Route::get('/customers', [\App\Http\Controllers\CustomerAdminController::class, 'index'])->name('customers.index');
