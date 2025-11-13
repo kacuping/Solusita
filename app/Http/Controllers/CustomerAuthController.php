@@ -26,7 +26,7 @@ class CustomerAuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $remember = (bool) $request->boolean('remember');
+        $remember = true;
 
         if (! Auth::attempt($credentials, $remember)) {
             return back()->withErrors([
