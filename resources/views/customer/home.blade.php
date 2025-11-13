@@ -154,6 +154,51 @@
             gap: 10px;
         }
 
+        .cat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .cat-item {
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            background: #fff;
+        }
+
+        .cat-img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            display: block;
+        }
+
+        .cat-label {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.35);
+            color: #fff;
+            font-size: 12px;
+            padding: 6px 8px;
+            text-align: center;
+            backdrop-filter: blur(2px);
+        }
+
+        .cat-placeholder {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #eef3ff, #dbe7ff);
+            color: var(--primary-dark);
+            font-size: 22px;
+        }
+
         .tile {
             display: block;
             text-decoration: none;
@@ -409,7 +454,7 @@
 
         <div class="content">
             <div class="section-title">Kategori Layanan</div>
-            <div class="grid">
+            <div class="cat-grid">
                 @php
                     $defaultIcons = [
                         'General' => 'fa-broom',
@@ -421,14 +466,24 @@
                         'Lantai' => 'fa-broom',
                     ];
                 @endphp
-                @forelse(($categories->take(6)) as $i => $cat)
+                @forelse(($categories->take(6)) as $cat)
                     @php
-                        $iconClass = $cat->icon ?? ($defaultIcons[$cat->name] ?? 'fa-broom');
                         $href = route('customer.services.index', ['category' => $cat->name]);
+                        $img = !empty($cat->image)
+                            ? (\Illuminate\Support\Facades\Route::has('service-categories.image')
+                                ? route('service-categories.image', $cat)
+                                : \Illuminate\Support\Facades\Storage::url($cat->image))
+                            : null;
+                        $iconClass = $cat->icon ?? ($defaultIcons[$cat->name] ?? 'fa-broom');
                     @endphp
-                    <a class="tile {{ $i === 2 ? 'active' : '' }}" href="{{ $href }}">
-                        <div class="icon"><i class="fa {{ $iconClass }}"></i></div>
-                        <div>{{ $cat->name }}</div>
+                    <a href="{{ $href }}" class="cat-item">
+                        @if ($img)
+                            <img class="cat-img" src="{{ $img }}" alt="{{ $cat->name }}">
+                            <div class="cat-label">{{ $cat->name }}</div>
+                        @else
+                            <div class="cat-placeholder"><i class="fa {{ $iconClass }}"></i></div>
+                            <div class="cat-label">{{ $cat->name }}</div>
+                        @endif
                     </a>
                 @empty
                     <div class="tile" style="grid-column: span 3;">Belum ada kategori.</div>
