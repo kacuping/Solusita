@@ -104,6 +104,11 @@
                                                 <button class="btn btn-sm btn-outline-success"
                                                     type="submit">Update</button>
                                             </form>
+                                            <form method="POST" action="{{ route('bookings.destroy', $booking) }}" onsubmit="return confirm('Hapus jadwal ini?');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="btn btn-sm btn-danger" type="submit">Hapus</button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>

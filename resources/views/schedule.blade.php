@@ -11,7 +11,8 @@
         <div class="card-body">
             <form method="GET" action="{{ route('schedule.index') }}" class="form-inline">
                 <label class="mr-2">Bulan:</label>
-                <input type="month" name="month" value="{{ request('month', optional($monthStart)->format('Y-m')) }}" class="form-control mr-2">
+                <input type="month" name="month" value="{{ request('month', optional($monthStart)->format('Y-m')) }}"
+                    class="form-control mr-2">
                 <button class="btn btn-primary" type="submit">Terapkan</button>
             </form>
         </div>
@@ -27,14 +28,26 @@
                         $firstWeekday = (int) $start->copy()->startOfMonth()->dayOfWeekIso; // 1..7 (Mon..Sun)
                         $daysInMonth = (int) $start->daysInMonth;
                         $cells = [];
-                        for ($i = 1; $i < $firstWeekday; $i++) { $cells[] = null; }
-                        for ($d = 1; $d <= $daysInMonth; $d++) { $cells[] = $d; }
-                        while (count($cells) % 7 !== 0) { $cells[] = null; }
+                        for ($i = 1; $i < $firstWeekday; $i++) {
+                            $cells[] = null;
+                        }
+                        for ($d = 1; $d <= $daysInMonth; $d++) {
+                            $cells[] = $d;
+                        }
+                        while (count($cells) % 7 !== 0) {
+                            $cells[] = null;
+                        }
                     @endphp
                     <table class="table mb-0">
                         <thead>
                             <tr>
-                                <th>Sen</th><th>Sel</th><th>Rab</th><th>Kam</th><th>Jum</th><th>Sab</th><th>Min</th>
+                                <th>Sen</th>
+                                <th>Sel</th>
+                                <th>Rab</th>
+                                <th>Kam</th>
+                                <th>Jum</th>
+                                <th>Sab</th>
+                                <th>Min</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -52,25 +65,44 @@
                                                 <div class="d-flex justify-content-between align-items-center">
                                                     <strong>{{ $day }}</strong>
                                                     <div class="btn-group">
-                                                        <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#dayModal" data-date="{{ $dateStr }}">Lihat</button>
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                            data-toggle="modal" data-target="#dayModal"
+                                                            data-date="{{ $dateStr }}">Lihat</button>
                                                     </div>
                                                 </div>
                                                 @foreach ($items->take(3) as $b)
                                                     <div style="font-size:12px; color:#555;">
                                                         {{ optional($b->service)->name }}
-                                                        <span class="text-muted">@ {{ optional($b->scheduled_at)->format('H:i') }}</span>
+                                                        <span class="text-muted">@
+                                                            {{ optional($b->scheduled_at)->format('H:i') }}</span>
                                                     </div>
                                                 @endforeach
                                                 <template id="tpl-{{ $dateStr }}">
                                                     <div>
                                                         @forelse(($byDay[$dateStr] ?? collect()) as $bk)
-                                                            <div class="mb-2">
-                                                                <strong>{{ optional($bk->service)->name }}</strong>
-                                                                <span class="text-muted">@ {{ optional($bk->scheduled_at)->format('H:i') }}</span>
-                                                                <div style="font-size:12px;">{{ optional($bk->customer)->name }}{{ optional($bk->cleaner)->full_name ? ' · '.optional($bk->cleaner)->full_name : '' }}</div>
+                                                            <div
+                                                                class="mb-2 d-flex align-items-center justify-content-between">
+                                                                <div>
+                                                                    <strong>{{ optional($bk->service)->name }}</strong>
+                                                                    <span class="text-muted">@
+                                                                        {{ optional($bk->scheduled_at)->format('H:i') }}</span>
+                                                                    <div style="font-size:12px;">
+                                                                        {{ optional($bk->customer)->name }}{{ optional($bk->cleaner)->full_name ? ' · ' . optional($bk->cleaner)->full_name : '' }}
+                                                                    </div>
+                                                                </div>
+                                                                <form method="POST"
+                                                                    action="{{ route('bookings.destroy', $bk) }}"
+                                                                    onsubmit="return confirm('Hapus jadwal ini?');"
+                                                                    class="d-inline">
+                                                                    @csrf
+                                                                    @method('DELETE')
+                                                                    <button type="submit"
+                                                                        class="btn btn-sm btn-outline-danger">Hapus</button>
+                                                                </form>
                                                             </div>
                                                         @empty
-                                                            <div class="text-muted">Belum ada jadwal untuk tanggal ini.</div>
+                                                            <div class="text-muted">Belum ada jadwal untuk tanggal ini.
+                                                            </div>
                                                         @endforelse
                                                     </div>
                                                 </template>
@@ -121,7 +153,8 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Jadwal</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span
+                            aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div id="dayModalList" class="mb-3"></div>
@@ -138,19 +171,47 @@
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Layanan</label>
-                                <select name="service_id" class="form-control" required>
-                                    @foreach(($services ?? []) as $svc)
-                                        <option value="{{ $svc->id }}">{{ $svc->name }}</option>
+                                <select name="service_id" id="qcService" class="form-control" required>
+                                    @foreach ($services ?? [] as $svc)
+                                        <option value="{{ $svc->id }}" data-duration="{{ $svc->duration_minutes }}">
+                                            {{ $svc->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Pelanggan</label>
-                                <select name="customer_id" class="form-control" required>
-                                    @foreach(($customers ?? []) as $cust)
-                                        <option value="{{ $cust->id }}">{{ $cust->name }}</option>
+                                <select name="customer_id" id="qcCustomer" class="form-control" required>
+                                    @foreach ($customers ?? [] as $cust)
+                                        <option value="{{ $cust->id }}" data-address="{{ $cust->address }}">
+                                            {{ $cust->name }}</option>
                                     @endforeach
                                 </select>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-12">
+                                <label class="form-label">Alamat</label>
+                                <input type="text" name="address" id="qcAddress" class="form-control"
+                                    placeholder="Alamat layanan" required>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Petugas</label>
+                                <select name="cleaner_id" id="qcCleaner" class="form-control">
+                                    <option value="">-- Pilih Petugas --</option>
+                                    @foreach ($cleaners ?? [] as $c)
+                                        <option value="{{ $c->id }}">{{ $c->full_name ?? $c->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Durasi (menit)</label>
+                                <input type="number" name="duration_minutes" id="qcDuration" class="form-control"
+                                    min="15" step="15" required>
+                            </div>
+                            <div class="col-md-4 align-self-end">
+                                <div class="text-muted" style="font-size:12px;">Durasi default mengikuti layanan</div>
                             </div>
                         </div>
                         <div class="mt-2">
@@ -166,17 +227,43 @@
         </div>
     </div>
     <script>
-        (function(){
+        (function() {
             var modal = document.getElementById('dayModal');
-            if(!modal) return;
-            $('#dayModal').on('show.bs.modal', function (event) {
+            if (!modal) return;
+            $('#dayModal').on('show.bs.modal', function(event) {
                 var button = $(event.relatedTarget);
                 var dateStr = button.data('date');
-                var tpl = document.getElementById('tpl-'+dateStr);
+                var tpl = document.getElementById('tpl-' + dateStr);
                 var target = document.getElementById('dayModalList');
                 var dateInput = document.getElementById('dayModalDate');
-                if (tpl && target) { target.innerHTML = tpl.innerHTML; }
-                if (dateInput) { dateInput.value = dateStr; }
+                if (tpl && target) {
+                    target.innerHTML = tpl.innerHTML;
+                }
+                if (dateInput) {
+                    dateInput.value = dateStr;
+                }
+                var custSel = document.getElementById('qcCustomer');
+                var addrInput = document.getElementById('qcAddress');
+                var svcSel = document.getElementById('qcService');
+                var durInput = document.getElementById('qcDuration');
+                if (custSel && addrInput) {
+                    var opt = custSel.options[custSel.selectedIndex];
+                    var addr = opt ? opt.getAttribute('data-address') : '';
+                    addrInput.value = addr || '';
+                    custSel.addEventListener('change', function() {
+                        var o = custSel.options[custSel.selectedIndex];
+                        addrInput.value = (o ? o.getAttribute('data-address') : '') || '';
+                    });
+                }
+                if (svcSel && durInput) {
+                    var sopt = svcSel.options[svcSel.selectedIndex];
+                    var dur = sopt ? sopt.getAttribute('data-duration') : '';
+                    durInput.value = dur || '';
+                    svcSel.addEventListener('change', function() {
+                        var so = svcSel.options[svcSel.selectedIndex];
+                        durInput.value = (so ? so.getAttribute('data-duration') : '') || '';
+                    });
+                }
             });
         })();
     </script>

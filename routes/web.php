@@ -239,6 +239,18 @@ Route::middleware('auth')->group(function () {
         return back()->with('success', 'Status booking #'.$booking->id.' diperbarui.');
     })->name('bookings.status');
 
+    Route::delete('/bookings/{booking}', function (Request $request, \App\Models\Booking $booking) {
+        try {
+            if (method_exists($booking, 'reviews')) {
+                $booking->reviews()->delete();
+            }
+            $booking->delete();
+            return back()->with('success', 'Jadwal #'.$booking->id.' dihapus.');
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Tidak dapat menghapus jadwal karena terkait data lain.');
+        }
+    })->name('bookings.destroy');
+
     // Manajemen layanan (admin/staff)
     Route::resource('services', \App\Http\Controllers\AdminServiceController::class)->names([
         'index' => 'services.index',
@@ -290,6 +302,7 @@ Route::middleware('auth')->group(function () {
 
         $services = \App\Models\Service::orderBy('name')->get();
         $customers = \App\Models\Customer::orderBy('name')->get();
+        $cleaners = \App\Models\Cleaner::where('active', true)->orderBy('full_name')->get();
 
         return view('schedule', [
             'bookings' => $bookings,
@@ -298,6 +311,7 @@ Route::middleware('auth')->group(function () {
             'monthEnd' => $end,
             'services' => $services,
             'customers' => $customers,
+            'cleaners' => $cleaners,
         ]);
     })->name('schedule.index');
 
@@ -307,6 +321,9 @@ Route::middleware('auth')->group(function () {
             'time' => ['required','date_format:H:i'],
             'service_id' => ['required','exists:services,id'],
             'customer_id' => ['required','exists:customers,id'],
+            'address' => ['required','string','min:6'],
+            'duration_minutes' => ['required','integer','min:1'],
+            'cleaner_id' => ['nullable','exists:cleaners,id'],
             'notes' => ['nullable','string','max:500'],
         ]);
         $dt = \Carbon\Carbon::parse($data['date'].' '.$data['time']);
@@ -314,8 +331,11 @@ Route::middleware('auth')->group(function () {
         $booking = new \App\Models\Booking();
         $booking->service_id = (int) $data['service_id'];
         $booking->customer_id = (int) $data['customer_id'];
+        $booking->cleaner_id = $data['cleaner_id'] ?? null;
         $booking->scheduled_at = $dt;
         $booking->status = 'scheduled';
+        $booking->address = (string) $data['address'];
+        $booking->duration_minutes = (int) ($data['duration_minutes'] ?? (optional($service)->duration_minutes ?? 0));
         $booking->total_amount = optional($service)->base_price ?? 0;
         $booking->payment_status = 'unpaid';
         $booking->notes = $data['notes'] ?? null;
