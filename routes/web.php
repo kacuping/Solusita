@@ -347,6 +347,20 @@ Route::prefix('customer')->group(function () {
 
             return back()->with('status', 'Foto profil diperbarui');
         })->name('customer.profile.avatar');
+        Route::get('/avatar/{customer}', function (\App\Models\Customer $customer) {
+            $path = (string) ($customer->avatar ?? '');
+            if ($path === '') {
+                abort(404);
+            }
+            $rel = is_string($path) ? preg_replace('#^/storage/#', '', $path) : '';
+            if ($rel === '') {
+                abort(404);
+            }
+            if (! Storage::disk('public')->exists($rel)) {
+                abort(404);
+            }
+            return Storage::disk('public')->response($rel);
+        })->name('customer.avatar');
         // Tambahkan route /customer lainnya di sini ke depannya
     });
 });

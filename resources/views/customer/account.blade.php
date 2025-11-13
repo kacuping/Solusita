@@ -288,12 +288,13 @@
                 <div class="avatar">
                     @php
                         $initial = strtoupper(substr(auth()->user()->name ?? 'U', 0, 1));
-                        $photoUrl =
-                            ($customer ?? \App\Models\Customer::where('user_id', auth()->id())->first())->avatar ??
-                            null;
+                        $cust = $customer ?? \App\Models\Customer::where('user_id', auth()->id())->first();
+                        $photoUrl = optional($cust)->avatar;
+                        $useStream = is_string($photoUrl) && preg_match('#^/storage/#', $photoUrl);
+                        $avatarSrc = $photoUrl ? ($useStream && \Illuminate\Support\Facades\Route::has('customer.avatar') ? route('customer.avatar', $cust) : $photoUrl) : null;
                     @endphp
-                    @if ($photoUrl)
-                        <img src="{{ $photoUrl }}" alt="Avatar">
+                    @if ($avatarSrc)
+                        <img src="{{ $avatarSrc }}" alt="Avatar">
                     @else
                         <div
                             style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.15);color:#fff;font-size:36px;">
