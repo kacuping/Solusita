@@ -68,7 +68,23 @@ Route::prefix('customer')->group(function () {
                 'email' => $user->email,
             ]);
 
-            return view('customer.order', compact('service', 'customer'));
+            $desc = (string) ($service->description ?? '');
+            $minMinutes = (int) ($service->duration_minutes ?? 60);
+            if ($desc !== '') {
+                if (preg_match('/minimal\s+order\s+(\d+)\s*jam/i', $desc, $m)) {
+                    $minMinutes = max($minMinutes, ((int) $m[1]) * 60);
+                }
+            }
+
+            $file = storage_path('app/payment_options.json');
+            $paymentOptions = [];
+            if (file_exists($file)) {
+                $json = file_get_contents($file);
+                $paymentOptions = json_decode($json, true) ?: [];
+            }
+            $cashActive = session('cash_active', true);
+
+            return view('customer.order', compact('service', 'customer', 'minMinutes', 'paymentOptions', 'cashActive'));
         })->name('customer.order.create');
         Route::post('/order', function (\Illuminate\Http\Request $request) {
             $user = auth()->user();
@@ -78,13 +94,80 @@ Route::prefix('customer')->group(function () {
                 'service_id' => 'required|exists:services,id',
                 'date' => 'required|date',
                 'time' => 'required',
+                'duration_minutes' => ['nullable','integer','min:1'],
                 'address' => 'required|string|min:6',
                 'notes' => 'nullable|string',
                 'promotion_code' => 'nullable|string|max:50',
+                'payment_method' => ['required','string','max:100'],
             ]);
 
             $service = \App\Models\Service::findOrFail($validated['service_id']);
+            $isDuration = strtolower(trim((string)($service->unit_type ?? 'Durasi'))) === 'durasi';
+            $desc = (string) ($service->description ?? '');
+            $minMinutes = (int) ($service->duration_minutes ?? 60);
+            if ($desc !== '') {
+                if (preg_match('/minimal\s+order\s+(\d+)\s*jam/i', $desc, $m)) {
+                    $minMinutes = max($minMinutes, ((int) $m[1]) * 60);
+                }
+            }
+            // enforce minimum hanya untuk layanan berbasis durasi
+            if ($isDuration) {
+                if ((int) ($validated['duration_minutes'] ?? 0) < $minMinutes) {
+                    return back()
+                        ->withErrors(['duration_minutes' => 'Durasi minimal adalah '.$minMinutes.' menit untuk layanan ini.'])
+                        ->withInput();
+                }
+            } else {
+                $validated['duration_minutes'] = 0;
+            }
+
             $scheduledAt = \Carbon\Carbon::parse($validated['date'].' '.$validated['time']);
+
+            // Validate payment method against active methods
+            $file = storage_path('app/payment_options.json');
+            $options = [];
+            if (file_exists($file)) {
+                $json = file_get_contents($file);
+                $options = json_decode($json, true) ?: [];
+            }
+            $cashActive = session('cash_active', true);
+            $allowedMethods = [];
+            if (!empty($cashActive)) { $allowedMethods[] = 'cash'; }
+            foreach ($options as $opt) {
+                if (!empty($opt['active'])) {
+                    $allowedMethods[] = 'option_'.($opt['id'] ?? '');
+                }
+            }
+            if (!in_array($validated['payment_method'], $allowedMethods, true)) {
+                return back()->withErrors(['payment_method' => 'Metode pembayaran tidak tersedia.'])->withInput();
+            }
+
+            $unitMinutes = (int) ($service->duration_minutes ?? 60);
+            if ($unitMinutes <= 0) { $unitMinutes = 60; }
+            $durationVal = (int) ($validated['duration_minutes'] ?? 0);
+            $subtotal = (float) ($service->base_price ?? 0);
+            if ($isDuration) {
+                $subtotal = (float) ($service->base_price ?? 0) * ($durationVal / $unitMinutes);
+            }
+            $discount = 0.0;
+            $promoCode = trim((string) ($validated['promotion_code'] ?? ''));
+            if ($promoCode !== '') {
+                $promo = \App\Models\Promotion::where('code', $promoCode)
+                    ->where('active', true)
+                    ->where(function ($q) { $q->whereNull('starts_at')->orWhere('starts_at', '<=', now()); })
+                    ->where(function ($q) { $q->whereNull('ends_at')->orWhere('ends_at', '>=', now()); })
+                    ->first();
+                if ($promo) {
+                    if ($promo->discount_type === 'percent') {
+                        $discount = $subtotal * ((float)$promo->discount_value) / 100.0;
+                    } else {
+                        $discount = (float) $promo->discount_value;
+                    }
+                    if ($discount < 0) { $discount = 0; }
+                    if ($discount > $subtotal) { $discount = $subtotal; }
+                }
+            }
+            $finalAmount = max($subtotal - $discount, 0);
 
             $booking = \App\Models\Booking::create([
                 'customer_id' => $customer->id,
@@ -92,15 +175,53 @@ Route::prefix('customer')->group(function () {
                 'scheduled_at' => $scheduledAt,
                 'status' => 'pending',
                 'address' => $validated['address'],
-                'notes' => $validated['notes'] ?? null,
-                'duration_minutes' => $service->duration_minutes,
-                'total_amount' => $service->base_price,
+                'notes' => trim(($validated['notes'] ?? '')) !== ''
+                    ? ($validated['notes'])
+                    : null,
+                'duration_minutes' => (int) ($validated['duration_minutes'] ?? 0),
+                'total_amount' => $finalAmount,
                 'payment_status' => 'unpaid',
                 'promotion_code' => $validated['promotion_code'] ?? null,
             ]);
 
+            // Append payment method info into notes for traceability
+            $methodNote = 'Metode Pembayaran: ' . $validated['payment_method'];
+            $booking->notes = trim(($booking->notes ? ($booking->notes.' | '.$methodNote) : $methodNote));
+            $booking->save();
+
             return redirect()->route('customer.schedule')->with('status', 'Pesanan berhasil dibuat.');
         })->name('customer.order.store');
+
+        // Validate promo and compute discount for UI preview
+        Route::get('/promo/validate', function (\Illuminate\Http\Request $request) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->first();
+            $serviceId = (int) $request->query('service_id');
+            $code = trim((string) $request->query('code'));
+            $service = \App\Models\Service::find($serviceId);
+            if (!$service || $code === '') {
+                return response()->json(['ok' => false, 'discount' => 0]);
+            }
+            $amount = (float) ($request->query('amount', 0));
+            $basePrice = $amount > 0 ? $amount : (float) ($service->base_price ?? 0);
+            $promo = \App\Models\Promotion::where('code', $code)
+                ->where('active', true)
+                ->where(function ($q) { $q->whereNull('starts_at')->orWhere('starts_at', '<=', now()); })
+                ->where(function ($q) { $q->whereNull('ends_at')->orWhere('ends_at', '>=', now()); })
+                ->first();
+            if (!$promo) {
+                return response()->json(['ok' => false, 'discount' => 0]);
+            }
+            $discount = 0.0;
+            if ($promo->discount_type === 'percent') {
+                $discount = $basePrice * ((float)$promo->discount_value) / 100.0;
+            } else {
+                $discount = (float) $promo->discount_value;
+            }
+            if ($discount < 0) { $discount = 0; }
+            if ($discount > $basePrice) { $discount = $basePrice; }
+            return response()->json(['ok' => true, 'discount' => round($discount, 2)]);
+        })->name('customer.promo.validate');
         // Halaman profil pelanggan (versi mobile sederhana)
         Route::get('/profile', function () {
             $user = auth()->user();
