@@ -70,7 +70,9 @@
                                             $assistants = [];
                                             $notes = (string) ($booking->notes ?? '');
                                             if ($notes !== '' && preg_match('/assistants\s*:\s*([^|]+)/i', $notes, $m)) {
-                                                $ids = collect(explode(',', trim($m[1])))->map(fn($v) => (int) trim($v))->filter();
+                                                $ids = collect(explode(',', trim($m[1])))
+                                                    ->map(function ($v) { return (int) trim($v); })
+                                                    ->filter(function ($v) { return $v > 0; });
                                                 if ($ids->count() > 0) {
                                                     $assistants = \App\Models\Cleaner::whereIn('id', $ids)->pluck('full_name')->filter()->values()->all();
                                                     if (empty($assistants)) {
