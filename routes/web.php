@@ -442,7 +442,33 @@ Route::middleware('auth')->group(function () {
         $bookings = $query->paginate(15)->withQueryString();
         $cleaners = \App\Models\Cleaner::where('active', true)->orderBy('full_name')->get();
 
-        return view('bookings', compact('bookings', 'cleaners'));
+        $assistantNames = [];
+        $paymentMethods = [];
+        foreach ($bookings as $b) {
+            $notes = (string) ($b->notes ?? '');
+            if ($notes !== '' && preg_match('/assistants\s*:\s*([^|]+)/i', $notes, $m)) {
+                $ids = array_values(array_filter(array_map(function ($v) {
+                    return (int) trim((string) $v);
+                }, explode(',', trim((string) $m[1])))));
+                if (! empty($ids)) {
+                    $names = \App\Models\Cleaner::whereIn('id', $ids)->pluck('full_name')->filter()->values()->all();
+                    if (empty($names)) {
+                        $names = \App\Models\Cleaner::whereIn('id', $ids)->pluck('name')->filter()->values()->all();
+                    }
+                    $assistantNames[$b->id] = $names;
+                }
+            }
+            if ($notes !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*([^|]+)/i', $notes, $mm)) {
+                $paymentMethods[$b->id] = trim((string) $mm[1]);
+            }
+        }
+
+        return view('bookings', [
+            'bookings' => $bookings,
+            'cleaners' => $cleaners,
+            'assistantNames' => $assistantNames,
+            'paymentMethods' => $paymentMethods,
+        ]);
     })->name('bookings.index');
 
     // Assign petugas untuk booking

@@ -65,36 +65,14 @@
                                     <td>{{ optional($booking->service)->name ?? '-' }}</td>
                                     <td>{{ optional($booking->scheduled_at)->format('d M Y H:i') }}</td>
                                     <td>
-                                        @php
-                                            $mainCleaner = optional($booking->cleaner)->full_name ?? (optional($booking->cleaner)->name ?? '-');
-                                            $assistants = [];
-                                            $notes = (string) ($booking->notes ?? '');
-                                            if ($notes !== '' && preg_match('/assistants\s*:\s*([^|]+)/i', $notes, $m)) {
-                                                $ids = collect(explode(',', trim($m[1])))
-                                                    ->map(function ($v) { return (int) trim($v); })
-                                                    ->filter(function ($v) { return $v > 0; });
-                                                if ($ids->count() > 0) {
-                                                    $assistants = \App\Models\Cleaner::whereIn('id', $ids)->pluck('full_name')->filter()->values()->all();
-                                                    if (empty($assistants)) {
-                                                        $assistants = \App\Models\Cleaner::whereIn('id', $ids)->pluck('name')->filter()->values()->all();
-                                                    }
-                                                }
-                                            }
-                                        @endphp
-                                        {{ $mainCleaner }}
+                                        {{ optional($booking->cleaner)->full_name ?? (optional($booking->cleaner)->name ?? '-') }}
+                                        @php($assistants = $assistantNames[$booking->id] ?? [])
                                         @if (!empty($assistants))
                                             <div><small class="text-muted">Asisten: {{ implode(', ', $assistants) }}</small></div>
                                         @endif
                                     </td>
                                     <td>
-                                        @php
-                                            $method = null;
-                                            $n = (string) ($booking->notes ?? '');
-                                            if ($n !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*([^|]+)/i', $n, $mm)) {
-                                                $method = trim($mm[1]);
-                                            }
-                                        @endphp
-                                        {{ $method ?? '-' }}
+                                        {{ ($paymentMethods[$booking->id] ?? '-') }}
                                     </td>
                                     <td><span class="badge bg-info">{{ $booking->status }}</span></td>
                                     <td>Rp {{ number_format((float) $booking->total_amount, 0, ',', '.') }}</td>

@@ -412,12 +412,12 @@
             $userName = auth()->user()->name ?? 'Pelanggan';
             $firstName = explode(' ', $userName)[0];
             $hour = (int) now()->format('H');
-            $greet = $hour < 12 ? 'Selamat pagi' : ($hour < 18 ? 'Selamat sore' : 'Selamat malam');
+            $greet = $hour < 12 ? 'Selamat Pagi' : ($hour < 18 ? 'Selamat Sore' : 'Selamat Malam');
             ?>
             <div class="greeting">
                 <div class="greet-text">
                     <div id="greetLabel">{{ $greet }}</div>
-                    <div id="greetName">{{ $firstName }}</div>
+                    <div id="greetName">{{ $userName }}</div>
                 </div>
                 <span id="notifBell" class="notif-bell" aria-label="Notifikasi">
                     <i class="fa-regular fa-bell"></i>
@@ -441,7 +441,7 @@
                 Pembayaran untuk pesanan #{{ $lastPaid->id }} telah diterima.
             </div>
             <script>
-                (function(){
+                (function() {
                     var dot = document.querySelector('.notif-dot');
                     if (dot) dot.style.display = 'block';
                 })();
