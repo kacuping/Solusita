@@ -463,11 +463,31 @@ Route::middleware('auth')->group(function () {
             }
         }
 
+        $assistantSlots = [];
+        foreach ($bookings as $b) {
+            $svcName = optional($b->service)->name ?? '';
+            $needed = 1;
+            if ($svcName && preg_match('/(\d+)\s*Cleaner/i', (string) $svcName, $sm)) {
+                $needed = max(1, (int) $sm[1]);
+            }
+            $assistantSlots[$b->id] = max(0, $needed - 1);
+        }
+
+        $statusOptions = [
+            'pending' => 'Pending',
+            'scheduled' => 'Terjadwal',
+            'in_progress' => 'Berjalan',
+            'completed' => 'Selesai',
+            'cancelled' => 'Dibatalkan',
+        ];
+
         return view('bookings', [
             'bookings' => $bookings,
             'cleaners' => $cleaners,
             'assistantNames' => $assistantNames,
+            'assistantSlots' => $assistantSlots,
             'paymentMethods' => $paymentMethods,
+            'statusOptions' => $statusOptions,
         ]);
     })->name('bookings.index');
 

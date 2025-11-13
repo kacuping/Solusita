@@ -103,15 +103,7 @@
                                                         </option>
                                                     @endforeach
                                                 </select>
-                                                @php
-                                                    $svcName = optional($booking->service)->name ?? '';
-                                                    $needed = 1;
-                                                    if ($svcName && preg_match('/(\d+)\s*Cleaner/i', $svcName, $m)) {
-                                                        $needed = max(1, (int) $m[1]);
-                                                    }
-                                                    $extra = max(0, $needed - 1);
-                                                @endphp
-                                                @for ($i = 0; $i < $extra; $i++)
+                                                @for ($i = 0; $i < ($assistantSlots[$booking->id] ?? 0); $i++)
                                                     <select name="assistants[]" class="form-control form-control-sm" style="min-width:160px;">
                                                         <option value="">-- Asisten {{ $i + 1 }} --</option>
                                                         @foreach ($cleaners ?? [] as $c)
@@ -127,7 +119,6 @@
                                                 class="form-inline d-flex align-items-center" style="gap:.5rem;">
                                                 @csrf
                                                 @method('PATCH')
-                                                @php($statusOptions = ['pending' => 'Pending', 'scheduled' => 'Terjadwal', 'in_progress' => 'Berjalan', 'completed' => 'Selesai', 'cancelled' => 'Dibatalkan'])
                                                 <select name="status" class="form-control form-control-sm"
                                                     style="min-width:160px;">
                                                     @foreach ($statusOptions as $key => $label)
