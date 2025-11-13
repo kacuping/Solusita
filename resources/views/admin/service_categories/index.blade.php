@@ -69,7 +69,7 @@
                                 <td style="width:220px">
                                     <div class="d-flex align-items-center">
                                         @if(!empty($cat->image))
-                                            <img src="{{ route('service-categories.image', $cat) }}" alt="{{ $cat->name }}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;margin-right:8px;">
+                                            <img src="{{ Route::has('service-categories.image') ? route('service-categories.image', $cat) : Storage::url($cat->image) }}" alt="{{ $cat->name }}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;margin-right:8px;">
                                             @else
                                                 <div style="width:48px;height:48px;border-radius:8px;background:#eef3ff;color:#2a57c4;display:flex;align-items:center;justify-content:center;margin-right:8px;">
                                                     <i class="fa {{ $cat->icon ?? 'fa-broom' }}" style="font-size:18px"></i>

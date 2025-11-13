@@ -102,6 +102,6 @@ class AdminServiceCategoryController extends Controller
         if ($path === '' || ! Storage::disk('public')->exists($path)) {
             abort(404);
         }
-        return Storage::disk('public')->response($path);
+        return response()->file(storage_path('app/public/'.$path));
     }
 }
