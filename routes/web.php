@@ -13,13 +13,22 @@ use Illuminate\Support\Facades\Storage;
 
 // Solusita: jadikan root sebagai Dashboard terproteksi
 Route::get('/', function () {
-    // Jika user adalah pelanggan, arahkan ke dashboard pelanggan
     $user = auth()->user();
     if ($user && ($user->role ?? null) === 'customer') {
         return redirect()->route('customer.home');
     }
 
-    return view('dashboard');
+    $bookingsCount = \App\Models\Booking::count();
+    $pendingCount = \App\Models\Booking::where('status', 'pending')->count();
+    $scheduledToday = \App\Models\Booking::whereDate('scheduled_at', now()->toDateString())->count();
+    $paidTotal = \App\Models\Booking::where('payment_status', 'paid')->sum('total_amount');
+    $unpaidTotal = \App\Models\Booking::where('payment_status', 'unpaid')->sum('total_amount');
+    $recentBookings = \App\Models\Booking::with(['customer','service'])
+        ->orderByDesc('created_at')
+        ->limit(10)
+        ->get();
+
+    return view('dashboard', compact('bookingsCount','pendingCount','scheduledToday','paidTotal','unpaidTotal','recentBookings'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Alihkan /dashboard ke route bernama dashboard (root)
@@ -261,13 +270,111 @@ Route::middleware('auth')->group(function () {
     Route::patch('/cleaners/{cleaner}/approve', [\App\Http\Controllers\CleanerController::class, 'approve'])->name('cleaners.approve');
     Route::patch('/cleaners/{cleaner}/reject', [\App\Http\Controllers\CleanerController::class, 'reject'])->name('cleaners.reject');
 
-    Route::get('/schedule', function () {
-        return view('schedule');
+    Route::get('/schedule', function (Request $request) {
+        $month = $request->string('month') ?: now()->format('Y-m');
+        try {
+            $start = \Carbon\Carbon::createFromFormat('Y-m', (string) $month)->startOfMonth();
+        } catch (\Throwable $e) {
+            $start = now()->startOfMonth();
+        }
+        $end = (clone $start)->endOfMonth();
+
+        $bookings = \App\Models\Booking::with(['customer','service','cleaner'])
+            ->whereBetween('scheduled_at', [$start, $end])
+            ->orderBy('scheduled_at')
+            ->get();
+
+        $byDay = $bookings->groupBy(function ($b) {
+            return optional($b->scheduled_at)->toDateString();
+        });
+
+        $services = \App\Models\Service::orderBy('name')->get();
+        $customers = \App\Models\Customer::orderBy('name')->get();
+
+        return view('schedule', [
+            'bookings' => $bookings,
+            'byDay' => $byDay,
+            'monthStart' => $start,
+            'monthEnd' => $end,
+            'services' => $services,
+            'customers' => $customers,
+        ]);
     })->name('schedule.index');
 
-    Route::get('/payments', function () {
-        return view('payments');
+    Route::post('/bookings/quick-create', function (Request $request) {
+        $data = $request->validate([
+            'date' => ['required','date'],
+            'time' => ['required','date_format:H:i'],
+            'service_id' => ['required','exists:services,id'],
+            'customer_id' => ['required','exists:customers,id'],
+            'notes' => ['nullable','string','max:500'],
+        ]);
+        $dt = \Carbon\Carbon::parse($data['date'].' '.$data['time']);
+        $service = \App\Models\Service::find($data['service_id']);
+        $booking = new \App\Models\Booking();
+        $booking->service_id = (int) $data['service_id'];
+        $booking->customer_id = (int) $data['customer_id'];
+        $booking->scheduled_at = $dt;
+        $booking->status = 'scheduled';
+        $booking->total_amount = optional($service)->base_price ?? 0;
+        $booking->payment_status = 'unpaid';
+        $booking->notes = $data['notes'] ?? null;
+        $booking->save();
+        return back()->with('success', 'Jadwal baru ditambahkan untuk tanggal '.$dt->format('d M Y H:i').'.');
+    })->name('bookings.quick_create');
+
+    Route::get('/payments', function (Request $request) {
+        $query = \App\Models\Booking::query()
+            ->with(['customer', 'service'])
+            ->orderByDesc('created_at');
+
+        if ($request->filled('payment_status')) {
+            $query->where('payment_status', $request->string('payment_status'));
+        }
+
+        if ($request->filled('q')) {
+            $q = trim($request->string('q'));
+            $query->whereHas('customer', function ($sub) use ($q) {
+                $sub->where('name', 'like', "%$q%")
+                    ->orWhere('email', 'like', "%$q%");
+            });
+        }
+
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->date('to'));
+        }
+
+        $bookings = $query->paginate(15)->withQueryString();
+
+        $summary = [
+            'paid_total' => \App\Models\Booking::where('payment_status', 'paid')->sum('total_amount'),
+            'unpaid_total' => \App\Models\Booking::where('payment_status', 'unpaid')->sum('total_amount'),
+            'failed_total' => \App\Models\Booking::where('payment_status', 'failed')->sum('total_amount'),
+            'refunded_total' => \App\Models\Booking::where('payment_status', 'refunded')->sum('total_amount'),
+        ];
+
+        $file = storage_path('app/payment_options.json');
+        $paymentOptions = [];
+        if (file_exists($file)) {
+            $json = file_get_contents($file);
+            $paymentOptions = json_decode($json, true) ?: [];
+        }
+        $cashActive = session('cash_active', true);
+        return view('payments', compact('bookings', 'summary', 'paymentOptions', 'cashActive'));
     })->name('payments.index');
+
+    Route::patch('/payments/{booking}/status', function (Request $request, \App\Models\Booking $booking) {
+        $data = $request->validate([
+            'payment_status' => ['required','in:unpaid,paid,refunded,failed'],
+        ]);
+        $booking->payment_status = $data['payment_status'];
+        $booking->save();
+        return back()->with('success', 'Status pembayaran booking #'.$booking->id.' diperbarui.');
+    })->name('payments.status');
 
     // Promotions CRUD
     Route::resource('promotions', \App\Http\Controllers\PromotionsController::class)->names([
@@ -295,8 +402,159 @@ Route::middleware('auth')->group(function () {
     Route::delete('/support/{ticket}/attach/{attachmentId}', [\App\Http\Controllers\TicketController::class, 'destroyAttachment'])->name('support.attach.delete');
 
     Route::get('/settings', function () {
-        return view('settings');
+        $settings = session('settings', [
+            'company_name' => 'Solusita',
+            'service_area' => 'Bekasi & Sekitar',
+            'notify_email' => 'admin@solusita.local',
+            'enable_notifications' => true,
+        ]);
+        $file = storage_path('app/payment_options.json');
+        $paymentOptions = [];
+        if (file_exists($file)) {
+            $json = file_get_contents($file);
+            $paymentOptions = json_decode($json, true) ?: [];
+        }
+        return view('settings', compact('settings','paymentOptions'));
     })->name('settings.index');
+
+    Route::post('/settings', function (Request $request) {
+        $data = $request->validate([
+            'company_name' => ['required','string','max:100'],
+            'service_area' => ['required','string','max:200'],
+            'notify_email' => ['required','email'],
+            'enable_notifications' => ['nullable'],
+        ]);
+        $data['enable_notifications'] = $request->boolean('enable_notifications');
+        session(['settings' => $data]);
+        return back()->with('status', 'Pengaturan disimpan.');
+    })->name('settings.save');
+
+    Route::post('/settings/payment-options', function (Request $request) {
+        $action = (string) $request->string('action');
+        if ($action === '') {
+            if ($request->has('id')) {
+                $action = 'update';
+            } elseif ($request->has('type') || $request->has('label')) {
+                $action = 'create';
+            }
+        }
+        $file = storage_path('app/payment_options.json');
+        $options = [];
+        if (file_exists($file)) {
+            $json = file_get_contents($file);
+            $options = json_decode($json, true) ?: [];
+        }
+
+        if ($action === 'create') {
+            $data = $request->validate([
+                'type' => ['required','in:transfer,qris'],
+                'label' => ['required','string','max:100'],
+                'bank_name' => ['nullable','string','max:100'],
+                'bank_account_name' => ['nullable','string','max:100'],
+                'bank_account_number' => ['nullable','string','max:50'],
+                'qris_image' => ['nullable','image','max:2048'],
+            ]);
+            $id = \Illuminate\Support\Str::uuid()->toString();
+            $qrisPath = null;
+            if ($data['type'] === 'qris') {
+                $data['bank_name'] = null;
+                $data['bank_account_name'] = null;
+                $data['bank_account_number'] = null;
+            }
+            if ($data['type'] === 'qris' && $request->hasFile('qris_image')) {
+                $dest = public_path('uploads/payment_options');
+                if (!is_dir($dest)) { @mkdir($dest, 0775, true); }
+                $fn = \Illuminate\Support\Str::random(12).'_'.$request->file('qris_image')->getClientOriginalName();
+                $request->file('qris_image')->move($dest, $fn);
+                $qrisPath = 'uploads/payment_options/'.$fn;
+            }
+            if ($data['type'] === 'transfer') {
+                $qrisPath = null;
+            }
+            $options[] = [
+                'id' => $id,
+                'type' => $data['type'],
+                'label' => $data['label'],
+                'bank_name' => $data['bank_name'] ?? null,
+                'bank_account_name' => $data['bank_account_name'] ?? null,
+                'bank_account_number' => $data['bank_account_number'] ?? null,
+                'qris_image_path' => $qrisPath,
+                'active' => true,
+            ];
+            file_put_contents($file, json_encode($options, JSON_PRETTY_PRINT));
+            return redirect()->route('settings.index')->with('status', 'Pilihan pembayaran ditambahkan.');
+        }
+
+        if ($action === 'update') {
+            $id = $request->string('id');
+            $data = $request->validate([
+                'type' => ['required','in:transfer,qris'],
+                'label' => ['required','string','max:100'],
+                'bank_name' => ['nullable','string','max:100'],
+                'bank_account_name' => ['nullable','string','max:100'],
+                'bank_account_number' => ['nullable','string','max:50'],
+                'qris_image' => ['nullable','image','max:2048'],
+                'active' => ['nullable'],
+            ]);
+            foreach ($options as &$opt) {
+                if (($opt['id'] ?? null) === (string) $id) {
+                    $opt['type'] = $data['type'];
+                    $opt['label'] = $data['label'];
+                    if ($data['type'] === 'qris') {
+                        $opt['bank_name'] = null;
+                        $opt['bank_account_name'] = null;
+                        $opt['bank_account_number'] = null;
+                    } else {
+                        $opt['bank_name'] = $data['bank_name'] ?? null;
+                        $opt['bank_account_name'] = $data['bank_account_name'] ?? null;
+                        $opt['bank_account_number'] = $data['bank_account_number'] ?? null;
+                    }
+                    $opt['active'] = $request->boolean('active');
+                    if ($data['type'] === 'qris' && $request->hasFile('qris_image')) {
+                        $dest = public_path('uploads/payment_options');
+                        if (!is_dir($dest)) { @mkdir($dest, 0775, true); }
+                        $fn = \Illuminate\Support\Str::random(12).'_'.$request->file('qris_image')->getClientOriginalName();
+                        $request->file('qris_image')->move($dest, $fn);
+                        $opt['qris_image_path'] = 'uploads/payment_options/'.$fn;
+                    }
+                    if ($data['type'] === 'transfer') {
+                        $opt['qris_image_path'] = null;
+                    }
+                    break;
+                }
+            }
+            file_put_contents($file, json_encode($options, JSON_PRETTY_PRINT));
+            return redirect()->route('settings.index')->with('status', 'Pilihan pembayaran diperbarui.');
+        }
+
+        if ($action === 'delete') {
+            $id = $request->string('id');
+            $options = array_values(array_filter($options, function ($o) use ($id) {
+                return ($o['id'] ?? null) !== (string) $id;
+            }));
+            file_put_contents($file, json_encode($options, JSON_PRETTY_PRINT));
+            return redirect()->route('settings.index')->with('status', 'Pilihan pembayaran dihapus.');
+        }
+
+        return redirect()->route('settings.index')->with('error', 'Aksi tidak dikenal.');
+    })->name('settings.payment_options');
+
+    Route::post('/payments/methods/active', function (Request $request) {
+        $ids = (array) $request->input('active_ids', []);
+        $file = storage_path('app/payment_options.json');
+        $options = [];
+        if (file_exists($file)) {
+            $json = file_get_contents($file);
+            $options = json_decode($json, true) ?: [];
+        }
+        $ids = array_map('strval', $ids);
+        foreach ($options as &$opt) {
+            $opt['active'] = in_array((string) ($opt['id'] ?? ''), $ids, true);
+        }
+        session(['cash_active' => $request->boolean('cash_active')]);
+        file_put_contents($file, json_encode($options, JSON_PRETTY_PRINT));
+        return back()->with('status', 'Metode pembayaran aktif diperbarui.');
+    })->name('payments.methods.active');
 
     // Manajemen User (CRUD) - Hanya admin melalui proteksi di controller
     Route::resource('users', UserController::class)->names([
