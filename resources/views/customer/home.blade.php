@@ -421,6 +421,7 @@
                 </div>
                 <span id="notifBell" class="notif-bell" aria-label="Notifikasi">
                     <i class="fa-regular fa-bell"></i>
+                    <span class="notif-dot"></span>
                 </span>
             </div>
             <div class="search">
@@ -433,6 +434,18 @@
 
         @if (!$customer)
             <div class="warning">Profil pelanggan belum ditemukan. Silakan lengkapi data di menu Akun.</div>
+        @endif
+
+        @if (!empty($lastPaid))
+            <div class="warning" style="margin-top:8px; color:#155e75; background:#ecfeff; border-color:#a5f3fc;">
+                Pembayaran untuk pesanan #{{ $lastPaid->id }} telah diterima.
+            </div>
+            <script>
+                (function(){
+                    var dot = document.querySelector('.notif-dot');
+                    if (dot) dot.style.display = 'block';
+                })();
+            </script>
         @endif
 
         <!-- Ringkasan sebagai label di bawah kolom cari -->

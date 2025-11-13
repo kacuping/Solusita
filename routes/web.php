@@ -449,11 +449,29 @@ Route::middleware('auth')->group(function () {
     Route::patch('/bookings/{booking}/assign', function (Request $request, \App\Models\Booking $booking) {
         $data = $request->validate([
             'cleaner_id' => ['nullable', 'exists:cleaners,id'],
+            'assistants' => ['array'],
+            'assistants.*' => ['nullable', 'exists:cleaners,id'],
         ]);
         $booking->cleaner_id = $data['cleaner_id'] ?? null;
         // Opsional: ketika assign, ubah status menjadi 'scheduled' jika masih pending
         if ($booking->status === 'pending' && ($booking->cleaner_id !== null)) {
             $booking->status = 'scheduled';
+        }
+        // Simpan asisten tambahan ke notes agar bisa ditampilkan
+        $assistants = collect($data['assistants'] ?? [])->filter(fn ($v) => ! is_null($v))->map(fn ($v) => (int) $v)->values();
+        if ($assistants->count() > 0) {
+            $existing = (string) ($booking->notes ?? '');
+            $pattern = '/assistants\s*:\s*[^|]*/i';
+            $assistLine = 'assistants: '.$assistants->implode(',');
+            if ($existing === '') {
+                $booking->notes = $assistLine;
+            } else {
+                if (preg_match($pattern, $existing)) {
+                    $booking->notes = preg_replace($pattern, $assistLine, $existing) ?: $existing;
+                } else {
+                    $booking->notes = trim($existing.' | '.$assistLine);
+                }
+            }
         }
         $booking->save();
 

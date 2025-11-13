@@ -47,6 +47,7 @@
                                 <th>Layanan</th>
                                 <th>Jadwal</th>
                                 <th>Petugas</th>
+                                <th>Metode</th>
                                 <th>Status</th>
                                 <th>Total</th>
                                 <th>Bayar</th>
@@ -63,11 +64,49 @@
                                     </td>
                                     <td>{{ optional($booking->service)->name ?? '-' }}</td>
                                     <td>{{ optional($booking->scheduled_at)->format('d M Y H:i') }}</td>
-                                    <td>{{ optional($booking->cleaner)->full_name ?? (optional($booking->cleaner)->name ?? '-') }}
+                                    <td>
+                                        @php
+                                            $mainCleaner = optional($booking->cleaner)->full_name ?? (optional($booking->cleaner)->name ?? '-');
+                                            $assistants = [];
+                                            $notes = (string) ($booking->notes ?? '');
+                                            if ($notes !== '' && preg_match('/assistants\s*:\s*([^|]+)/i', $notes, $m)) {
+                                                $ids = collect(explode(',', trim($m[1])))->map(fn($v) => (int) trim($v))->filter();
+                                                if ($ids->count() > 0) {
+                                                    $assistants = \App\Models\Cleaner::whereIn('id', $ids)->pluck('full_name')->filter()->values()->all();
+                                                    if (empty($assistants)) {
+                                                        $assistants = \App\Models\Cleaner::whereIn('id', $ids)->pluck('name')->filter()->values()->all();
+                                                    }
+                                                }
+                                            }
+                                        @endphp
+                                        {{ $mainCleaner }}
+                                        @if (!empty($assistants))
+                                            <div><small class="text-muted">Asisten: {{ implode(', ', $assistants) }}</small></div>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @php
+                                            $method = null;
+                                            $n = (string) ($booking->notes ?? '');
+                                            if ($n !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*([^|]+)/i', $n, $mm)) {
+                                                $method = trim($mm[1]);
+                                            }
+                                        @endphp
+                                        {{ $method ?? '-' }}
                                     </td>
                                     <td><span class="badge bg-info">{{ $booking->status }}</span></td>
                                     <td>Rp {{ number_format((float) $booking->total_amount, 0, ',', '.') }}</td>
-                                    <td>{{ $booking->payment_status }}</td>
+                                    <td>
+                                        {{ $booking->payment_status }}
+                                        @if ($booking->payment_status !== 'paid')
+                                            <form method="POST" action="{{ route('payments.status', $booking) }}" style="display:inline-block; margin-left:8px;">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="payment_status" value="paid">
+                                                <button class="btn btn-sm btn-success" title="Konfirmasi pembayaran" type="submit">✔</button>
+                                            </form>
+                                        @endif
+                                    </td>
                                     <td>
                                         <div class="d-flex gap-2 flex-wrap">
                                             <form method="POST" action="{{ route('bookings.assign', $booking) }}"
@@ -84,6 +123,22 @@
                                                         </option>
                                                     @endforeach
                                                 </select>
+                                                @php
+                                                    $svcName = optional($booking->service)->name ?? '';
+                                                    $needed = 1;
+                                                    if ($svcName && preg_match('/(\d+)\s*Cleaner/i', $svcName, $m)) {
+                                                        $needed = max(1, (int) $m[1]);
+                                                    }
+                                                    $extra = max(0, $needed - 1);
+                                                @endphp
+                                                @for ($i = 0; $i < $extra; $i++)
+                                                    <select name="assistants[]" class="form-control form-control-sm" style="min-width:160px;">
+                                                        <option value="">-- Asisten {{ $i + 1 }} --</option>
+                                                        @foreach ($cleaners ?? [] as $c)
+                                                            <option value="{{ $c->id }}">{{ $c->full_name ?? $c->name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                @endfor
                                                 <button class="btn btn-sm btn-outline-primary"
                                                     type="submit">Assign</button>
                                             </form>

@@ -5,11 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\Promotion;
-use App\Models\Service;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Carbon;
 
 class CustomerHomeController extends Controller
 {
@@ -29,8 +27,12 @@ class CustomerHomeController extends Controller
         if (array_key_exists('new_customer', $rules)) {
             $required = (bool) $rules['new_customer'];
             if ($required) {
-                if (!$customer) return false; // must have a customer profile
-                if ($totalPastBookings > 0) return false; // not new anymore
+                if (! $customer) {
+                    return false;
+                } // must have a customer profile
+                if ($totalPastBookings > 0) {
+                    return false;
+                } // not new anymore
             }
         }
 
@@ -38,9 +40,13 @@ class CustomerHomeController extends Controller
         if (array_key_exists('min_days_since_registration', $rules)) {
             $days = (int) $rules['min_days_since_registration'];
             if ($days > 0) {
-                if (!$customer || !$customer->created_at) return false;
+                if (! $customer || ! $customer->created_at) {
+                    return false;
+                }
                 $ageDays = now()->diffInDays($customer->created_at);
-                if ($ageDays < $days) return false;
+                if ($ageDays < $days) {
+                    return false;
+                }
             }
         }
 
@@ -48,9 +54,13 @@ class CustomerHomeController extends Controller
         if (array_key_exists('max_days_since_registration', $rules)) {
             $days = (int) $rules['max_days_since_registration'];
             if ($days > 0) {
-                if (!$customer || !$customer->created_at) return false;
+                if (! $customer || ! $customer->created_at) {
+                    return false;
+                }
                 $ageDays = now()->diffInDays($customer->created_at);
-                if ($ageDays > $days) return false;
+                if ($ageDays > $days) {
+                    return false;
+                }
             }
         }
 
@@ -64,6 +74,7 @@ class CustomerHomeController extends Controller
 
         return true;
     }
+
     public function index()
     {
         $user = Auth::user();
@@ -94,12 +105,17 @@ class CustomerHomeController extends Controller
 
             // Count by status for dynamic Order & Pesanan Selesai
             $openOrders = Booking::where('customer_id', $customer->id)
-                ->whereIn('status', ['pending','scheduled','in_progress'])
+                ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
                 ->count();
 
             $completedOrders = Booking::where('customer_id', $customer->id)
                 ->where('status', 'completed')
                 ->count();
+
+            $lastPaid = Booking::where('customer_id', $customer->id)
+                ->where('payment_status', 'paid')
+                ->orderByDesc('updated_at')
+                ->first();
         }
 
         // Promo aktif saat ini
@@ -134,21 +150,21 @@ class CustomerHomeController extends Controller
             ->leftJoin('reviews', 'reviews.booking_id', '=', 'bookings.id')
             ->select(
                 'cleaners.id',
-                DB::raw("cleaners.".$nameColumn." as name"),
+                DB::raw('cleaners.'.$nameColumn.' as name'),
                 'cleaners.phone',
                 'cleaners.address',
                 DB::raw('AVG(reviews.rating) as avg_rating'),
                 DB::raw('COUNT(reviews.id) as review_count')
             )
-            ->groupBy('cleaners.id', DB::raw('cleaners.' . $nameColumn), 'cleaners.phone', 'cleaners.address')
+            ->groupBy('cleaners.id', DB::raw('cleaners.'.$nameColumn), 'cleaners.phone', 'cleaners.address')
             ->orderByDesc(DB::raw('AVG(reviews.rating)'))
             ->orderByDesc(DB::raw('COUNT(reviews.id)'))
             ->limit(5)
             ->get();
 
         // Filter: tampilkan hanya jika rating rata-rata > 1 bintang
-        $topCleaners = collect($topCleanersRaw)->filter(function($c){
-            return (float)($c->avg_rating ?? 0) > 1.0;
+        $topCleaners = collect($topCleanersRaw)->filter(function ($c) {
+            return (float) ($c->avg_rating ?? 0) > 1.0;
         })->values();
 
         return view('customer.home', [
@@ -161,6 +177,7 @@ class CustomerHomeController extends Controller
             'activePromotions' => $eligiblePromotions,
             'categories' => $categories,
             'topCleaners' => $topCleaners,
+            'lastPaid' => $lastPaid ?? null,
         ]);
     }
 }
