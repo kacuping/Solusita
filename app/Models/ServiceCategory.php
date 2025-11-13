@@ -12,7 +12,7 @@ class ServiceCategory extends Model
     protected $fillable = [
         'name',
         'icon',
+        'image',
         'active',
     ];
 }
-

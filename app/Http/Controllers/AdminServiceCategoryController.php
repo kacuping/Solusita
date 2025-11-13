@@ -41,13 +41,22 @@ class AdminServiceCategoryController extends Controller
         }
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', 'unique:service_categories,name'],
-            'icon' => ['nullable', 'string', 'max:100'],
+            'image' => ['nullable', 'image', 'max:2048'],
             'active' => ['nullable', 'boolean'],
         ]);
 
-        $data['active'] = $request->boolean('active');
+        $payload = [
+            'name' => $data['name'],
+            'active' => $request->boolean('active'),
+        ];
 
-        ServiceCategory::create($data);
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('categories', 'public');
+            $payload['image'] = $path;
+            $payload['icon'] = null;
+        }
+
+        ServiceCategory::create($payload);
 
         return back()->with('status', 'Kategori berhasil ditambahkan.');
     }
@@ -59,13 +68,22 @@ class AdminServiceCategoryController extends Controller
         }
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', 'unique:service_categories,name,'.$service_category->id],
-            'icon' => ['nullable', 'string', 'max:100'],
+            'image' => ['nullable', 'image', 'max:2048'],
             'active' => ['nullable', 'boolean'],
         ]);
 
-        $data['active'] = $request->boolean('active');
+        $payload = [
+            'name' => $data['name'],
+            'active' => $request->boolean('active'),
+        ];
 
-        $service_category->update($data);
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('categories', 'public');
+            $payload['image'] = $path;
+            $payload['icon'] = null;
+        }
+
+        $service_category->update($payload);
 
         return back()->with('status', 'Kategori berhasil diperbarui.');
     }
