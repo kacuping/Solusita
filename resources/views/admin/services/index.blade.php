@@ -198,13 +198,8 @@
                 </table>
             </div>
 
-            <style>
-                .admin-services-pagination .pagination { font-size: 12px; }
-                .admin-services-pagination .page-link { padding: 4px 8px; line-height: 1.2; }
-                .admin-services-pagination .page-item.active .page-link { font-weight: 600; }
-            </style>
             <div class="admin-services-pagination d-flex justify-content-center">
-                {{ $services->links() }}
+                {{ $services->links('vendor.pagination.adminlte-sm') }}
             </div>
         </div>
     </div>
