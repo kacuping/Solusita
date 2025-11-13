@@ -433,6 +433,9 @@ Route::middleware('auth')->group(function () {
         'destroy' => 'service-categories.destroy',
     ])->except(['create', 'show', 'edit']);
 
+    Route::get('/service-categories/{service_category}/image', [\App\Http\Controllers\AdminServiceCategoryController::class, 'image'])
+        ->name('service-categories.image');
+
     // Daftar pelanggan (admin/staff)
     Route::get('/customers', [\App\Http\Controllers\CustomerAdminController::class, 'index'])->name('customers.index');
 

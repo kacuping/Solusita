@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ServiceCategory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -93,5 +94,14 @@ class AdminServiceCategoryController extends Controller
         $service_category->delete();
 
         return back()->with('status', 'Kategori berhasil dihapus.');
+    }
+
+    public function image(ServiceCategory $service_category)
+    {
+        $path = (string) ($service_category->image ?? '');
+        if ($path === '' || ! Storage::disk('public')->exists($path)) {
+            abort(404);
+        }
+        return Storage::disk('public')->response($path);
     }
 }
