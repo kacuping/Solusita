@@ -189,8 +189,54 @@ Route::prefix('customer')->group(function () {
             $booking->notes = trim(($booking->notes ? ($booking->notes.' | '.$methodNote) : $methodNote));
             $booking->save();
 
-            return redirect()->route('customer.schedule')->with('status', 'Pesanan berhasil dibuat.');
+            return redirect()->route('customer.payment.show', ['booking' => $booking->id, 'method' => $validated['payment_method']]);
         })->name('customer.order.store');
+
+        Route::get('/payment/{booking}', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            $method = (string) $request->query('method', '');
+            if ($method === '') {
+                $n = (string) ($booking->notes ?? '');
+                if (preg_match('/Metode Pembayaran:\s*(cash|option_[a-z0-9-]+)/i', $n, $m)) {
+                    $method = strtolower($m[1]);
+                }
+            }
+            $file = storage_path('app/payment_options.json');
+            $paymentOptions = [];
+            if (file_exists($file)) {
+                $json = file_get_contents($file);
+                $paymentOptions = json_decode($json, true) ?: [];
+            }
+            $selectedOption = null;
+            if (str_starts_with($method, 'option_')) {
+                $id = substr($method, strlen('option_'));
+                foreach ($paymentOptions as $opt) {
+                    if ((string) ($opt['id'] ?? '') === (string) $id) { $selectedOption = $opt; break; }
+                }
+            }
+            $service = \App\Models\Service::find($booking->service_id);
+            return view('customer.payment', [
+                'booking' => $booking,
+                'service' => $service,
+                'method' => $method,
+                'paymentOption' => $selectedOption,
+            ]);
+        })->name('customer.payment.show');
+
+        Route::post('/payment/{booking}/confirm', function (\App\Models\Booking $booking) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            $booking->payment_status = 'paid';
+            $booking->save();
+            return redirect()->route('customer.schedule')->with('status', 'Pembayaran dikonfirmasi.');
+        })->name('customer.payment.confirm');
 
         // Validate promo and compute discount for UI preview
         Route::get('/promo/validate', function (\Illuminate\Http\Request $request) {
