@@ -421,7 +421,7 @@
                         'Lantai' => 'fa-broom',
                     ];
                 @endphp
-                @forelse($categories as $i => $cat)
+                @forelse(($categories->take(6)) as $i => $cat)
                     @php
                         $iconClass = $cat->icon ?? ($defaultIcons[$cat->name] ?? 'fa-broom');
                         $href = route('customer.services.index', ['category' => $cat->name]);
