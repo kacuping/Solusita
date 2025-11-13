@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ServiceCategory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\View\View;
 
 class AdminServiceCategoryController extends Controller
 {
@@ -22,7 +22,7 @@ class AdminServiceCategoryController extends Controller
             }
             $categories = $query->paginate($perPage)->withQueryString();
         } else {
-            $categories = new LengthAwarePaginator([], 0, $perPage, (int)($request->query('page', 1)), [
+            $categories = new LengthAwarePaginator([], 0, $perPage, (int) $request->query('page', 1), [
                 'path' => $request->url(),
                 'query' => $request->query(),
             ]);
@@ -91,6 +91,7 @@ class AdminServiceCategoryController extends Controller
     public function destroy(ServiceCategory $service_category): RedirectResponse
     {
         $service_category->delete();
+
         return back()->with('status', 'Kategori berhasil dihapus.');
     }
 }
