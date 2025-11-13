@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\CustomerAuthController;
-use App\Http\Controllers\CustomerHomeController;
 use App\Http\Controllers\CustomerHelpController;
+use App\Http\Controllers\CustomerHomeController;
 use App\Http\Controllers\CustomerRegistrationController;
 use App\Http\Controllers\CustomerServiceController;
 use App\Http\Controllers\ProfileController;
@@ -23,12 +23,12 @@ Route::get('/', function () {
     $scheduledToday = \App\Models\Booking::whereDate('scheduled_at', now()->toDateString())->count();
     $paidTotal = \App\Models\Booking::where('payment_status', 'paid')->sum('total_amount');
     $unpaidTotal = \App\Models\Booking::where('payment_status', 'unpaid')->sum('total_amount');
-    $recentBookings = \App\Models\Booking::with(['customer','service'])
+    $recentBookings = \App\Models\Booking::with(['customer', 'service'])
         ->orderByDesc('created_at')
         ->limit(10)
         ->get();
 
-    return view('dashboard', compact('bookingsCount','pendingCount','scheduledToday','paidTotal','unpaidTotal','recentBookings'));
+    return view('dashboard', compact('bookingsCount', 'pendingCount', 'scheduledToday', 'paidTotal', 'unpaidTotal', 'recentBookings'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 // Alihkan /dashboard ke route bernama dashboard (root)
@@ -94,15 +94,15 @@ Route::prefix('customer')->group(function () {
                 'service_id' => 'required|exists:services,id',
                 'date' => 'required|date',
                 'time' => 'required',
-                'duration_minutes' => ['nullable','integer','min:1'],
+                'duration_minutes' => ['nullable', 'integer', 'min:1'],
                 'address' => 'required|string|min:6',
                 'notes' => 'nullable|string',
                 'promotion_code' => 'nullable|string|max:50',
-                'payment_method' => ['required','string','max:100'],
+                'payment_method' => ['required', 'string', 'max:100'],
             ]);
 
             $service = \App\Models\Service::findOrFail($validated['service_id']);
-            $isDuration = strtolower(trim((string)($service->unit_type ?? 'Durasi'))) === 'durasi';
+            $isDuration = strtolower(trim((string) ($service->unit_type ?? 'Durasi'))) === 'durasi';
             $desc = (string) ($service->description ?? '');
             $minMinutes = (int) ($service->duration_minutes ?? 60);
             if ($desc !== '') {
@@ -132,18 +132,22 @@ Route::prefix('customer')->group(function () {
             }
             $cashActive = session('cash_active', true);
             $allowedMethods = [];
-            if (!empty($cashActive)) { $allowedMethods[] = 'cash'; }
+            if (! empty($cashActive)) {
+                $allowedMethods[] = 'cash';
+            }
             foreach ($options as $opt) {
-                if (!empty($opt['active'])) {
+                if (! empty($opt['active'])) {
                     $allowedMethods[] = 'option_'.($opt['id'] ?? '');
                 }
             }
-            if (!in_array($validated['payment_method'], $allowedMethods, true)) {
+            if (! in_array($validated['payment_method'], $allowedMethods, true)) {
                 return back()->withErrors(['payment_method' => 'Metode pembayaran tidak tersedia.'])->withInput();
             }
 
             $unitMinutes = (int) ($service->duration_minutes ?? 60);
-            if ($unitMinutes <= 0) { $unitMinutes = 60; }
+            if ($unitMinutes <= 0) {
+                $unitMinutes = 60;
+            }
             $durationVal = (int) ($validated['duration_minutes'] ?? 0);
             $subtotal = (float) ($service->base_price ?? 0);
             if ($isDuration) {
@@ -154,17 +158,25 @@ Route::prefix('customer')->group(function () {
             if ($promoCode !== '') {
                 $promo = \App\Models\Promotion::where('code', $promoCode)
                     ->where('active', true)
-                    ->where(function ($q) { $q->whereNull('starts_at')->orWhere('starts_at', '<=', now()); })
-                    ->where(function ($q) { $q->whereNull('ends_at')->orWhere('ends_at', '>=', now()); })
+                    ->where(function ($q) {
+                        $q->whereNull('starts_at')->orWhere('starts_at', '<=', now());
+                    })
+                    ->where(function ($q) {
+                        $q->whereNull('ends_at')->orWhere('ends_at', '>=', now());
+                    })
                     ->first();
                 if ($promo) {
                     if ($promo->discount_type === 'percent') {
-                        $discount = $subtotal * ((float)$promo->discount_value) / 100.0;
+                        $discount = $subtotal * ((float) $promo->discount_value) / 100.0;
                     } else {
                         $discount = (float) $promo->discount_value;
                     }
-                    if ($discount < 0) { $discount = 0; }
-                    if ($discount > $subtotal) { $discount = $subtotal; }
+                    if ($discount < 0) {
+                        $discount = 0;
+                    }
+                    if ($discount > $subtotal) {
+                        $discount = $subtotal;
+                    }
                 }
             }
             $finalAmount = max($subtotal - $discount, 0);
@@ -185,7 +197,7 @@ Route::prefix('customer')->group(function () {
             ]);
 
             // Append payment method info into notes for traceability
-            $methodNote = 'Metode Pembayaran: ' . $validated['payment_method'];
+            $methodNote = 'Metode Pembayaran: '.$validated['payment_method'];
             $booking->notes = trim(($booking->notes ? ($booking->notes.' | '.$methodNote) : $methodNote));
             $booking->save();
 
@@ -215,10 +227,14 @@ Route::prefix('customer')->group(function () {
             if (str_starts_with($method, 'option_')) {
                 $id = substr($method, strlen('option_'));
                 foreach ($paymentOptions as $opt) {
-                    if ((string) ($opt['id'] ?? '') === (string) $id) { $selectedOption = $opt; break; }
+                    if ((string) ($opt['id'] ?? '') === (string) $id) {
+                        $selectedOption = $opt;
+                        break;
+                    }
                 }
             }
             $service = \App\Models\Service::find($booking->service_id);
+
             return view('customer.payment', [
                 'booking' => $booking,
                 'service' => $service,
@@ -235,8 +251,30 @@ Route::prefix('customer')->group(function () {
             }
             $booking->payment_status = 'paid';
             $booking->save();
+
             return redirect()->route('customer.schedule')->with('status', 'Pembayaran dikonfirmasi.');
         })->name('customer.payment.confirm');
+
+        Route::post('/payment/{booking}/cancel', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            if ($booking->payment_status !== 'paid') {
+                try {
+                    if (method_exists($booking, 'reviews')) {
+                        $booking->reviews()->delete();
+                    }
+                    $booking->delete();
+                } catch (\Throwable $e) {
+                    $booking->status = 'cancelled';
+                    $booking->save();
+                }
+            }
+
+            return redirect()->route('customer.home')->with('status', 'Order dibatalkan.');
+        })->name('customer.payment.cancel');
 
         // Validate promo and compute discount for UI preview
         Route::get('/promo/validate', function (\Illuminate\Http\Request $request) {
@@ -245,27 +283,36 @@ Route::prefix('customer')->group(function () {
             $serviceId = (int) $request->query('service_id');
             $code = trim((string) $request->query('code'));
             $service = \App\Models\Service::find($serviceId);
-            if (!$service || $code === '') {
+            if (! $service || $code === '') {
                 return response()->json(['ok' => false, 'discount' => 0]);
             }
             $amount = (float) ($request->query('amount', 0));
             $basePrice = $amount > 0 ? $amount : (float) ($service->base_price ?? 0);
             $promo = \App\Models\Promotion::where('code', $code)
                 ->where('active', true)
-                ->where(function ($q) { $q->whereNull('starts_at')->orWhere('starts_at', '<=', now()); })
-                ->where(function ($q) { $q->whereNull('ends_at')->orWhere('ends_at', '>=', now()); })
+                ->where(function ($q) {
+                    $q->whereNull('starts_at')->orWhere('starts_at', '<=', now());
+                })
+                ->where(function ($q) {
+                    $q->whereNull('ends_at')->orWhere('ends_at', '>=', now());
+                })
                 ->first();
-            if (!$promo) {
+            if (! $promo) {
                 return response()->json(['ok' => false, 'discount' => 0]);
             }
             $discount = 0.0;
             if ($promo->discount_type === 'percent') {
-                $discount = $basePrice * ((float)$promo->discount_value) / 100.0;
+                $discount = $basePrice * ((float) $promo->discount_value) / 100.0;
             } else {
                 $discount = (float) $promo->discount_value;
             }
-            if ($discount < 0) { $discount = 0; }
-            if ($discount > $basePrice) { $discount = $basePrice; }
+            if ($discount < 0) {
+                $discount = 0;
+            }
+            if ($discount > $basePrice) {
+                $discount = $basePrice;
+            }
+
             return response()->json(['ok' => true, 'discount' => round($discount, 2)]);
         })->name('customer.promo.validate');
         // Halaman profil pelanggan (versi mobile sederhana)
@@ -290,9 +337,10 @@ Route::prefix('customer')->group(function () {
             $user = auth()->user();
             $customer = \App\Models\Customer::where('user_id', $user->id)->first();
             $query = \App\Models\Booking::where('customer_id', optional($customer)->id);
-            $openOrders = (clone $query)->whereIn('status', ['pending','scheduled','in_progress'])->count();
+            $openOrders = (clone $query)->whereIn('status', ['pending', 'scheduled', 'in_progress'])->count();
             $completedOrders = (clone $query)->where('status', 'completed')->count();
             $lastChange = (clone $query)->orderByDesc('updated_at')->value('updated_at');
+
             return response()->json([
                 'open_orders' => $openOrders,
                 'completed_orders' => $completedOrders,
@@ -359,6 +407,7 @@ Route::prefix('customer')->group(function () {
             if (! Storage::disk('public')->exists($rel)) {
                 abort(404);
             }
+
             return Storage::disk('public')->response($rel);
         })->name('customer.avatar');
         // Tambahkan route /customer lainnya di sini ke depannya
@@ -399,7 +448,7 @@ Route::middleware('auth')->group(function () {
     // Assign petugas untuk booking
     Route::patch('/bookings/{booking}/assign', function (Request $request, \App\Models\Booking $booking) {
         $data = $request->validate([
-            'cleaner_id' => ['nullable','exists:cleaners,id'],
+            'cleaner_id' => ['nullable', 'exists:cleaners,id'],
         ]);
         $booking->cleaner_id = $data['cleaner_id'] ?? null;
         // Opsional: ketika assign, ubah status menjadi 'scheduled' jika masih pending
@@ -407,16 +456,18 @@ Route::middleware('auth')->group(function () {
             $booking->status = 'scheduled';
         }
         $booking->save();
+
         return back()->with('success', 'Petugas berhasil di-assign untuk booking #'.$booking->id);
     })->name('bookings.assign');
 
     // Ubah status booking
     Route::patch('/bookings/{booking}/status', function (Request $request, \App\Models\Booking $booking) {
         $data = $request->validate([
-            'status' => ['required','in:pending,scheduled,in_progress,completed,cancelled'],
+            'status' => ['required', 'in:pending,scheduled,in_progress,completed,cancelled'],
         ]);
         $booking->status = $data['status'];
         $booking->save();
+
         return back()->with('success', 'Status booking #'.$booking->id.' diperbarui.');
     })->name('bookings.status');
 
@@ -426,6 +477,7 @@ Route::middleware('auth')->group(function () {
                 $booking->reviews()->delete();
             }
             $booking->delete();
+
             return back()->with('success', 'Jadwal #'.$booking->id.' dihapus.');
         } catch (\Throwable $e) {
             return back()->with('error', 'Tidak dapat menghapus jadwal karena terkait data lain.');
@@ -475,7 +527,7 @@ Route::middleware('auth')->group(function () {
         }
         $end = (clone $start)->endOfMonth();
 
-        $bookings = \App\Models\Booking::with(['customer','service','cleaner'])
+        $bookings = \App\Models\Booking::with(['customer', 'service', 'cleaner'])
             ->whereBetween('scheduled_at', [$start, $end])
             ->orderBy('scheduled_at')
             ->get();
@@ -501,18 +553,18 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/bookings/quick-create', function (Request $request) {
         $data = $request->validate([
-            'date' => ['required','date'],
-            'time' => ['required','date_format:H:i'],
-            'service_id' => ['required','exists:services,id'],
-            'customer_id' => ['required','exists:customers,id'],
-            'address' => ['required','string','min:6'],
-            'duration_minutes' => ['required','integer','min:1'],
-            'cleaner_id' => ['nullable','exists:cleaners,id'],
-            'notes' => ['nullable','string','max:500'],
+            'date' => ['required', 'date'],
+            'time' => ['required', 'date_format:H:i'],
+            'service_id' => ['required', 'exists:services,id'],
+            'customer_id' => ['required', 'exists:customers,id'],
+            'address' => ['required', 'string', 'min:6'],
+            'duration_minutes' => ['required', 'integer', 'min:1'],
+            'cleaner_id' => ['nullable', 'exists:cleaners,id'],
+            'notes' => ['nullable', 'string', 'max:500'],
         ]);
         $dt = \Carbon\Carbon::parse($data['date'].' '.$data['time']);
         $service = \App\Models\Service::find($data['service_id']);
-        $booking = new \App\Models\Booking();
+        $booking = new \App\Models\Booking;
         $booking->service_id = (int) $data['service_id'];
         $booking->customer_id = (int) $data['customer_id'];
         $booking->cleaner_id = $data['cleaner_id'] ?? null;
@@ -524,6 +576,7 @@ Route::middleware('auth')->group(function () {
         $booking->payment_status = 'unpaid';
         $booking->notes = $data['notes'] ?? null;
         $booking->save();
+
         return back()->with('success', 'Jadwal baru ditambahkan untuk tanggal '.$dt->format('d M Y H:i').'.');
     })->name('bookings.quick_create');
 
@@ -568,15 +621,17 @@ Route::middleware('auth')->group(function () {
             $paymentOptions = json_decode($json, true) ?: [];
         }
         $cashActive = session('cash_active', true);
+
         return view('payments', compact('bookings', 'summary', 'paymentOptions', 'cashActive'));
     })->name('payments.index');
 
     Route::patch('/payments/{booking}/status', function (Request $request, \App\Models\Booking $booking) {
         $data = $request->validate([
-            'payment_status' => ['required','in:unpaid,paid,refunded,failed'],
+            'payment_status' => ['required', 'in:unpaid,paid,refunded,failed'],
         ]);
         $booking->payment_status = $data['payment_status'];
         $booking->save();
+
         return back()->with('success', 'Status pembayaran booking #'.$booking->id.' diperbarui.');
     })->name('payments.status');
 
@@ -618,18 +673,20 @@ Route::middleware('auth')->group(function () {
             $json = file_get_contents($file);
             $paymentOptions = json_decode($json, true) ?: [];
         }
-        return view('settings', compact('settings','paymentOptions'));
+
+        return view('settings', compact('settings', 'paymentOptions'));
     })->name('settings.index');
 
     Route::post('/settings', function (Request $request) {
         $data = $request->validate([
-            'company_name' => ['required','string','max:100'],
-            'service_area' => ['required','string','max:200'],
-            'notify_email' => ['required','email'],
+            'company_name' => ['required', 'string', 'max:100'],
+            'service_area' => ['required', 'string', 'max:200'],
+            'notify_email' => ['required', 'email'],
             'enable_notifications' => ['nullable'],
         ]);
         $data['enable_notifications'] = $request->boolean('enable_notifications');
         session(['settings' => $data]);
+
         return back()->with('status', 'Pengaturan disimpan.');
     })->name('settings.save');
 
@@ -651,12 +708,12 @@ Route::middleware('auth')->group(function () {
 
         if ($action === 'create') {
             $data = $request->validate([
-                'type' => ['required','in:transfer,qris'],
-                'label' => ['required','string','max:100'],
-                'bank_name' => ['nullable','string','max:100'],
-                'bank_account_name' => ['nullable','string','max:100'],
-                'bank_account_number' => ['nullable','string','max:50'],
-                'qris_image' => ['nullable','image','max:2048'],
+                'type' => ['required', 'in:transfer,qris'],
+                'label' => ['required', 'string', 'max:100'],
+                'bank_name' => ['nullable', 'string', 'max:100'],
+                'bank_account_name' => ['nullable', 'string', 'max:100'],
+                'bank_account_number' => ['nullable', 'string', 'max:50'],
+                'qris_image' => ['nullable', 'image', 'max:2048'],
             ]);
             $id = \Illuminate\Support\Str::uuid()->toString();
             $qrisPath = null;
@@ -667,7 +724,9 @@ Route::middleware('auth')->group(function () {
             }
             if ($data['type'] === 'qris' && $request->hasFile('qris_image')) {
                 $dest = public_path('uploads/payment_options');
-                if (!is_dir($dest)) { @mkdir($dest, 0775, true); }
+                if (! is_dir($dest)) {
+                    @mkdir($dest, 0775, true);
+                }
                 $fn = \Illuminate\Support\Str::random(12).'_'.$request->file('qris_image')->getClientOriginalName();
                 $request->file('qris_image')->move($dest, $fn);
                 $qrisPath = 'uploads/payment_options/'.$fn;
@@ -686,18 +745,19 @@ Route::middleware('auth')->group(function () {
                 'active' => true,
             ];
             file_put_contents($file, json_encode($options, JSON_PRETTY_PRINT));
+
             return redirect()->route('settings.index')->with('status', 'Pilihan pembayaran ditambahkan.');
         }
 
         if ($action === 'update') {
             $id = $request->string('id');
             $data = $request->validate([
-                'type' => ['required','in:transfer,qris'],
-                'label' => ['required','string','max:100'],
-                'bank_name' => ['nullable','string','max:100'],
-                'bank_account_name' => ['nullable','string','max:100'],
-                'bank_account_number' => ['nullable','string','max:50'],
-                'qris_image' => ['nullable','image','max:2048'],
+                'type' => ['required', 'in:transfer,qris'],
+                'label' => ['required', 'string', 'max:100'],
+                'bank_name' => ['nullable', 'string', 'max:100'],
+                'bank_account_name' => ['nullable', 'string', 'max:100'],
+                'bank_account_number' => ['nullable', 'string', 'max:50'],
+                'qris_image' => ['nullable', 'image', 'max:2048'],
                 'active' => ['nullable'],
             ]);
             foreach ($options as &$opt) {
@@ -716,7 +776,9 @@ Route::middleware('auth')->group(function () {
                     $opt['active'] = $request->boolean('active');
                     if ($data['type'] === 'qris' && $request->hasFile('qris_image')) {
                         $dest = public_path('uploads/payment_options');
-                        if (!is_dir($dest)) { @mkdir($dest, 0775, true); }
+                        if (! is_dir($dest)) {
+                            @mkdir($dest, 0775, true);
+                        }
                         $fn = \Illuminate\Support\Str::random(12).'_'.$request->file('qris_image')->getClientOriginalName();
                         $request->file('qris_image')->move($dest, $fn);
                         $opt['qris_image_path'] = 'uploads/payment_options/'.$fn;
@@ -728,6 +790,7 @@ Route::middleware('auth')->group(function () {
                 }
             }
             file_put_contents($file, json_encode($options, JSON_PRETTY_PRINT));
+
             return redirect()->route('settings.index')->with('status', 'Pilihan pembayaran diperbarui.');
         }
 
@@ -737,6 +800,7 @@ Route::middleware('auth')->group(function () {
                 return ($o['id'] ?? null) !== (string) $id;
             }));
             file_put_contents($file, json_encode($options, JSON_PRETTY_PRINT));
+
             return redirect()->route('settings.index')->with('status', 'Pilihan pembayaran dihapus.');
         }
 
@@ -757,6 +821,7 @@ Route::middleware('auth')->group(function () {
         }
         session(['cash_active' => $request->boolean('cash_active')]);
         file_put_contents($file, json_encode($options, JSON_PRETTY_PRINT));
+
         return back()->with('status', 'Metode pembayaran aktif diperbarui.');
     })->name('payments.methods.active');
 

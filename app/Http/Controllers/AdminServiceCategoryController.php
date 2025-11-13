@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\ServiceCategory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class AdminServiceCategoryController extends Controller
@@ -102,6 +102,7 @@ class AdminServiceCategoryController extends Controller
         if ($path === '' || ! Storage::disk('public')->exists($path)) {
             abort(404);
         }
+
         return response()->file(storage_path('app/public/'.$path));
     }
 }

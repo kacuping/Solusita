@@ -40,9 +40,10 @@
             @if($m === 'cash')
                 <div class="status">Order diproses. Silakan siapkan pembayaran tunai saat petugas datang.</div>
                 <div class="muted">Metode: Tunai (Cash)</div>
-                <div class="btns">
-                    <a href="{{ route('customer.home') }}" class="btn btn-secondary">Kembali ke Beranda</a>
-                </div>
+                <form method="POST" action="{{ route('customer.payment.cancel', ['booking' => $booking->id]) }}" class="btns">
+                    @csrf
+                    <button type="submit" class="btn btn-secondary">Kembali ke Beranda</button>
+                </form>
             @elseif(str_starts_with($m, 'option_') && ($paymentOption ?? null))
                 @if(($paymentOption['type'] ?? '') === 'qris')
                     <div class="status">Detail Transaksi QRIS</div>
@@ -58,9 +59,10 @@
                         @csrf
                         <button type="submit" class="btn btn-primary">Konfirmasi Pembayaran</button>
                     </form>
-                    <div class="btns">
-                        <a href="{{ route('customer.home') }}" class="btn btn-secondary">Kembali ke Beranda</a>
-                    </div>
+                    <form method="POST" action="{{ route('customer.payment.cancel', ['booking' => $booking->id]) }}" class="btns">
+                        @csrf
+                        <button type="submit" class="btn btn-secondary">Kembali ke Beranda</button>
+                    </form>
                 @elseif(($paymentOption['type'] ?? '') === 'transfer')
                     <div class="status">Detail Transaksi Transfer</div>
                     <div class="line"><span>Bank</span><span>{{ $paymentOption['bank_name'] ?? '-' }}</span></div>
@@ -70,9 +72,10 @@
                         @csrf
                         <button type="submit" class="btn btn-primary">Konfirmasi Pembayaran</button>
                     </form>
-                    <div class="btns">
-                        <a href="{{ route('customer.home') }}" class="btn btn-secondary">Kembali ke Beranda</a>
-                    </div>
+                    <form method="POST" action="{{ route('customer.payment.cancel', ['booking' => $booking->id]) }}" class="btns">
+                        @csrf
+                        <button type="submit" class="btn btn-secondary">Kembali ke Beranda</button>
+                    </form>
                 @else
                     <div class="status">Metode pembayaran tidak dikenali.</div>
                     <div class="btns">
@@ -81,9 +84,10 @@
                 @endif
             @else
                 <div class="status">Metode pembayaran tidak ditemukan.</div>
-                <div class="btns">
-                    <a href="{{ route('customer.home') }}" class="btn btn-secondary">Kembali ke Beranda</a>
-                </div>
+                <form method="POST" action="{{ route('customer.payment.cancel', ['booking' => $booking->id]) }}" class="btns">
+                    @csrf
+                    <button type="submit" class="btn btn-secondary">Kembali ke Beranda</button>
+                </form>
             @endif
         </div>
         <div style="margin-top:12px; text-align:center; color:var(--muted); font-size:12px;">Solusita</div>
