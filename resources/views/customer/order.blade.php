@@ -564,11 +564,11 @@
                     elTotal.textContent = 'Rp ' + formatIDR(Math.max(subtotal - disc, 0));
                 }catch(e){ elDisc.textContent = 'Rp 0'; elTotal.textContent = 'Rp '+formatIDR(subtotal); }
             }
-            if(promoInput){ promoInput.addEventListener('input', recalc); }
-            if(durationInput){ durationInput.addEventListener('input', recalc); }
-            if(lenInput){ lenInput.addEventListener('input', recalc); }
-            if(widInput){ widInput.addEventListener('input', recalc); }
-            if(qtyInput){ qtyInput.addEventListener('input', recalc); }
+            if(promoInput){ promoInput.addEventListener('input', recalc); promoInput.addEventListener('change', recalc); }
+            if(durationInput){ durationInput.addEventListener('input', recalc); durationInput.addEventListener('change', recalc); durationInput.addEventListener('keyup', recalc); }
+            if(lenInput){ lenInput.addEventListener('input', recalc); lenInput.addEventListener('change', recalc); lenInput.addEventListener('keyup', recalc); }
+            if(widInput){ widInput.addEventListener('input', recalc); widInput.addEventListener('change', recalc); widInput.addEventListener('keyup', recalc); }
+            if(qtyInput){ qtyInput.addEventListener('input', recalc); qtyInput.addEventListener('change', recalc); qtyInput.addEventListener('keyup', recalc); }
             recalc();
         })();
     </script>
