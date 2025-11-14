@@ -36,7 +36,15 @@
                 <div class="icon"><i class="fa {{ $iconClass }}"></i></div>
                 <div>
                     <div class="title">{{ $service->name }}</div>
-                    <div class="meta">Durasi: {{ $service->duration_minutes }} menit · Kategori: {{ $service->category ?? 'Umum' }}</div>
+                    @php($isDuration = strtolower(trim((string)($service->unit_type ?? 'Durasi'))) === 'durasi')
+                    <div class="meta">
+                        @if($isDuration && (int)($service->duration_minutes ?? 0) > 0)
+                            Durasi: {{ (int)$service->duration_minutes }} menit
+                        @else
+                            Satuan/QTY: {{ $service->unit_type ?? 'Satuan' }}
+                        @endif
+                        · Kategori: {{ $service->category ?? 'Umum' }}
+                    </div>
                 </div>
             </div>
         </div>

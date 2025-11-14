@@ -95,6 +95,9 @@ Route::prefix('customer')->group(function () {
                 'date' => 'required|date',
                 'time' => 'required',
                 'duration_minutes' => ['nullable', 'integer', 'min:1'],
+                'length_m' => ['nullable', 'numeric', 'min:0.1'],
+                'width_m' => ['nullable', 'numeric', 'min:0.1'],
+                'qty' => ['nullable', 'integer', 'min:1'],
                 'address' => 'required|string|min:6',
                 'notes' => 'nullable|string',
                 'promotion_code' => 'nullable|string|max:50',
@@ -110,7 +113,7 @@ Route::prefix('customer')->group(function () {
                     $minMinutes = max($minMinutes, ((int) $m[1]) * 60);
                 }
             }
-            // enforce minimum hanya untuk layanan berbasis durasi
+            // enforce minimum / input sesuai unit
             if ($isDuration) {
                 if ((int) ($validated['duration_minutes'] ?? 0) < $minMinutes) {
                     return back()
@@ -119,6 +122,16 @@ Route::prefix('customer')->group(function () {
                 }
             } else {
                 $validated['duration_minutes'] = 0;
+                $unit = strtoupper(trim((string) ($service->unit_type ?? 'SATUAN')));
+                if ($unit === 'M2') {
+                    if (! $request->filled('length_m') || ! $request->filled('width_m')) {
+                        return back()->withErrors(['length_m' => 'Masukkan ukuran panjang & lebar dalam meter.'])->withInput();
+                    }
+                } else {
+                    if (! $request->filled('qty')) {
+                        return back()->withErrors(['qty' => 'Masukkan jumlah sesuai satuan/QTY.'])->withInput();
+                    }
+                }
             }
 
             $scheduledAt = \Carbon\Carbon::parse($validated['date'].' '.$validated['time']);
@@ -196,9 +209,23 @@ Route::prefix('customer')->group(function () {
                 'promotion_code' => $validated['promotion_code'] ?? null,
             ]);
 
-            // Append payment method info into notes for traceability
-            $methodNote = 'Metode Pembayaran: '.$validated['payment_method'];
-            $booking->notes = trim(($booking->notes ? ($booking->notes.' | '.$methodNote) : $methodNote));
+            // Append detail order ke notes: metode, unit/qty/ukuran, dan nomor order
+            $info = [];
+            $info[] = 'Metode Pembayaran: '.$validated['payment_method'];
+            $unit = strtoupper(trim((string) ($service->unit_type ?? 'SATUAN')));
+            if (! $isDuration) {
+                if ($unit === 'M2') {
+                    $L = (float) $validated['length_m'];
+                    $W = (float) $validated['width_m'];
+                    $info[] = 'Ukuran: Panjang '.$L.'m, Lebar '.$W.'m, Satuan: M2';
+                } else {
+                    $Q = (int) ($validated['qty'] ?? 1);
+                    $info[] = 'Qty: '.$Q.', Satuan: '.($service->unit_type ?? 'Satuan');
+                }
+            }
+            $booking->notes = trim(($booking->notes ? ($booking->notes.' | '.implode(' | ', $info)) : implode(' | ', $info)));
+            $orderNo = 'ORD-'.now()->format('ymd').str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT);
+            $booking->notes = trim($booking->notes.' | Order#: '.$orderNo);
             $booking->save();
 
             return redirect()->route('customer.payment.show', ['booking' => $booking->id, 'method' => $validated['payment_method']]);

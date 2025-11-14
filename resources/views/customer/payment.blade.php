@@ -29,6 +29,12 @@
     <div class="app">
         <div class="receipt">
             <div class="title">Struk Pesanan #{{ $booking->id }}</div>
+            @php($orderNo = null)
+            @php($n = (string)($booking->notes ?? ''))
+            @php(if($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $m)) { $orderNo = $m[1]; })
+            @if($orderNo)
+                <div class="line"><span>No. Order</span><span>{{ $orderNo }}</span></div>
+            @endif
             <div class="line"><span>Layanan</span><span>{{ $service->name ?? 'Layanan' }}</span></div>
             <div class="line"><span>Jadwal</span><span>{{ optional($booking->scheduled_at)->format('d M Y H:i') }}</span></div>
             <div class="line"><span>Durasi</span><span>{{ $booking->duration_minutes }} menit</span></div>
@@ -57,7 +63,7 @@
                     </div>
                     <form method="POST" action="{{ route('customer.payment.confirm', ['booking' => $booking->id]) }}" class="btns">
                         @csrf
-                        <button type="submit" class="btn btn-primary">Konfirmasi Pembayaran</button>
+                        <button type="submit" class="btn btn-primary">Order</button>
                     </form>
                     <form method="POST" action="{{ route('customer.payment.cancel', ['booking' => $booking->id]) }}" class="btns">
                         @csrf
@@ -70,7 +76,7 @@
                     <div class="line"><span>No. Rekening</span><span>{{ $paymentOption['bank_account_number'] ?? '-' }}</span></div>
                     <form method="POST" action="{{ route('customer.payment.confirm', ['booking' => $booking->id]) }}" class="btns">
                         @csrf
-                        <button type="submit" class="btn btn-primary">Konfirmasi Pembayaran</button>
+                        <button type="submit" class="btn btn-primary">Order</button>
                     </form>
                     <form method="POST" action="{{ route('customer.payment.cancel', ['booking' => $booking->id]) }}" class="btns">
                         @csrf
@@ -90,7 +96,7 @@
                 </form>
             @endif
         </div>
-        <div style="margin-top:12px; text-align:center; color:var(--muted); font-size:12px;">Solusita</div>
+        <div style="margin-top:12px; text-align:center; color:var(--muted); font-size:12px;">Untuk Konfirmasi Pembayaran silahkan masuk pada menu pembayaran</div>
     </div>
 </body>
 </html>

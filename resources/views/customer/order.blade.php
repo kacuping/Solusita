@@ -349,9 +349,16 @@
             </div>
         </div>
 
-        <div class="summary">
+            <div class="summary">
             <div class="title">{{ $service->name }}</div>
-            <div class="meta">Durasi: {{ $service->duration_minutes }} menit · Deskripsi:
+            @php($isDuration = strtolower(trim((string)($service->unit_type ?? 'Durasi'))) === 'durasi')
+            <div class="meta">
+                @if($isDuration && (int)($service->duration_minutes ?? 0) > 0)
+                    Durasi: {{ (int)$service->duration_minutes }} menit
+                @else
+                    Satuan/QTY: {{ $service->unit_type ?? 'Satuan' }}
+                @endif
+                · Deskripsi:
                 {{ $service->description ?? 'Belum ada deskripsi.' }}</div>
             <div class="price">Rp {{ number_format($service->base_price, 0, ',', '.') }}</div>
         </div>
@@ -389,21 +396,51 @@
                 </div>
             </div>
 
-            @php($isDuration = strtolower(trim((string)($service->unit_type ?? 'Durasi'))) === 'durasi')
-            <div class="field">
-                <label class="label">Durasi (menit)</label>
-                <div class="input-group">
-                    <input class="input" type="number" name="duration_minutes"
-                        value="{{ old('duration_minutes', max((int)($service->duration_minutes ?? 60), (int)($minMinutes ?? 0))) }}"
-                        min="{{ (int)($minMinutes ?? ($service->duration_minutes ?? 60)) }}" step="15" {{ $isDuration ? 'required' : 'disabled' }} autocomplete="off" />
-                    <span class="fld-ico"><i class="fa-solid fa-clock"></i></span>
+            @php($unitType = trim((string)($service->unit_type ?? 'Satuan')))
+            @if($isDuration)
+                <div class="field">
+                    <label class="label">Durasi (menit)</label>
+                    <div class="input-group">
+                        <input class="input" type="number" name="duration_minutes"
+                            value="{{ old('duration_minutes', max((int)($service->duration_minutes ?? 60), (int)($minMinutes ?? 0))) }}"
+                            min="{{ (int)($minMinutes ?? ($service->duration_minutes ?? 60)) }}" step="15" required autocomplete="off" />
+                        <span class="fld-ico"><i class="fa-solid fa-clock"></i></span>
+                    </div>
+                    @if(isset($minMinutes) && $minMinutes > 0)
+                    <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Minimal {{ $minMinutes }} menit (sesuai deskripsi layanan)</div>
+                    @endif
                 </div>
-                @if(!$isDuration)
-                <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Durasi dinonaktifkan karena layanan bukan berbasis durasi.</div>
-                @elseif(isset($minMinutes) && $minMinutes > 0)
-                <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Minimal {{ $minMinutes }} menit (sesuai deskripsi layanan)</div>
+            @else
+                @if(strtoupper($unitType) === 'M2')
+                    <div class="field">
+                        <label class="label">Ukuran</label>
+                        <div class="row dt-row">
+                            <div class="col">
+                                <div class="input-group">
+                                    <input class="input" type="number" name="length_m" value="{{ old('length_m') }}" min="0.1" step="0.1" placeholder="Panjang (m)" autocomplete="off" />
+                                    <span class="fld-ico"><i class="fa-solid fa-ruler-horizontal"></i></span>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="input-group">
+                                    <input class="input" type="number" name="width_m" value="{{ old('width_m') }}" min="0.1" step="0.1" placeholder="Lebar (m)" autocomplete="off" />
+                                    <span class="fld-ico"><i class="fa-solid fa-ruler-combined"></i></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Masukkan ukuran dalam meter (m).</div>
+                    </div>
+                @else
+                    <div class="field">
+                        <label class="label">Satuan/QTY</label>
+                        <div class="input-group">
+                            <input class="input" type="number" name="qty" value="{{ old('qty', 1) }}" min="1" step="1" autocomplete="off" />
+                            <span class="fld-ico"><i class="fa-solid fa-list-ol"></i></span>
+                        </div>
+                        <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Satuan: {{ $unitType }}</div>
+                    </div>
                 @endif
-            </div>
+            @endif
 
             <div class="field">
                 <label class="label">Alamat</label>
