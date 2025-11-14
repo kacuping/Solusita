@@ -486,6 +486,14 @@ Route::middleware('auth')->group(function () {
         $bookings = $query->paginate(15)->withQueryString();
         $cleaners = \App\Models\Cleaner::where('active', true)->orderBy('full_name')->get();
 
+        // Load payment options to map option_<id> into human-readable labels
+        $file = storage_path('app/payment_options.json');
+        $paymentOptions = [];
+        if (file_exists($file)) {
+            $json = file_get_contents($file);
+            $paymentOptions = json_decode($json, true) ?: [];
+        }
+
         $assistantNames = [];
         $paymentMethods = [];
         foreach ($bookings as $b) {
@@ -503,7 +511,22 @@ Route::middleware('auth')->group(function () {
                 }
             }
             if ($notes !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*([^|]+)/i', $notes, $mm)) {
-                $paymentMethods[$b->id] = trim((string) $mm[1]);
+                $raw = strtolower(trim((string) $mm[1]));
+                if ($raw === 'cash') {
+                    $paymentMethods[$b->id] = 'Tunai (Cash)';
+                } elseif (str_starts_with($raw, 'option_')) {
+                    $id = substr($raw, strlen('option_'));
+                    $label = null;
+                    foreach ($paymentOptions as $opt) {
+                        if ((string) ($opt['id'] ?? '') === (string) $id) {
+                            $label = $opt['label'] ?? null;
+                            break;
+                        }
+                    }
+                    $paymentMethods[$b->id] = $label ? $label : $raw;
+                } else {
+                    $paymentMethods[$b->id] = $raw;
+                }
             }
         }
 
