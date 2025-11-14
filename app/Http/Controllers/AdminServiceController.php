@@ -59,7 +59,7 @@ class AdminServiceController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:500'],
             'base_price' => ['required', 'numeric', 'min:0'],
-            'duration_minutes' => [Rule::requiredIf($request->input('unit_type') === 'Durasi'), 'integer', 'min:0'],
+            'duration_hours' => [Rule::requiredIf($request->input('unit_type') === 'Durasi'), 'integer', 'min:1'],
             'category' => ['required', 'string', 'max:100', 'exists:service_categories,name'],
             'unit_type' => ['required', Rule::in(['M2', 'Buah/Seater', 'Durasi', 'Satuan'])],
             'icon' => ['nullable', 'string', 'max:100'],
@@ -68,9 +68,13 @@ class AdminServiceController extends Controller
 
         $data['active'] = $request->boolean('active');
         $data['slug'] = Str::slug($data['name']);
-        if (($data['unit_type'] ?? null) !== 'Durasi') {
+        if (($data['unit_type'] ?? null) === 'Durasi') {
+            $hours = (int) $request->input('duration_hours', 0);
+            $data['duration_minutes'] = max($hours * 60, 0);
+        } else {
             $data['duration_minutes'] = 0;
         }
+        unset($data['duration_hours']);
 
         Service::create($data);
 
@@ -86,7 +90,7 @@ class AdminServiceController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:500'],
             'base_price' => ['required', 'numeric', 'min:0'],
-            'duration_minutes' => [Rule::requiredIf($request->input('unit_type') === 'Durasi'), 'integer', 'min:0'],
+            'duration_hours' => [Rule::requiredIf($request->input('unit_type') === 'Durasi'), 'integer', 'min:1'],
             'category' => ['required', 'string', 'max:100', 'exists:service_categories,name'],
             'unit_type' => ['required', Rule::in(['M2', 'Buah/Seater', 'Durasi', 'Satuan'])],
             'icon' => ['nullable', 'string', 'max:100'],
@@ -95,9 +99,13 @@ class AdminServiceController extends Controller
 
         $data['active'] = $request->boolean('active');
         $data['slug'] = Str::slug($data['name']);
-        if (($data['unit_type'] ?? null) !== 'Durasi') {
+        if (($data['unit_type'] ?? null) === 'Durasi') {
+            $hours = (int) $request->input('duration_hours', 0);
+            $data['duration_minutes'] = max($hours * 60, 0);
+        } else {
             $data['duration_minutes'] = 0;
         }
+        unset($data['duration_hours']);
 
         $service->update($data);
 

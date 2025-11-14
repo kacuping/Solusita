@@ -344,6 +344,9 @@
 </head>
 
 <body>
+    <script>
+        window.recalc = window.recalc || function() {};
+    </script>
     <div class="app">
         <div class="header">
             <div style="display:flex;align-items:center;gap:10px;">
@@ -402,12 +405,22 @@
             @php($unitType = trim((string) ($service->unit_type ?? 'Satuan')))
             @if ($isDuration)
                 <div class="field">
-                    <label class="label">Durasi (menit)</label>
+                    <label class="label">Durasi</label>
                     <div class="input-group">
-                        <input class="input" type="number" name="duration_minutes"
-                            value="{{ old('duration_minutes', max((int) ($service->duration_minutes ?? 60), (int) ($minMinutes ?? 0))) }}"
-                            min="{{ (int) ($minMinutes ?? ($service->duration_minutes ?? 60)) }}" step="15"
-                            required autocomplete="off" />
+                        @php($minBase = max((int) ($minMinutes ?? ($service->duration_minutes ?? 60)), 60))
+                        @php($start = max(120, $minBase))
+                        @php($end = max($start, 360))
+                        <select class="select" id="duration_minutes" name="duration_minutes" required
+                            data-base="{{ (float) ($service->base_price ?? 0) }}"
+                            onchange="window.recalc && window.recalc();(function(s){var b=Number(s.getAttribute('data-base')||0);var d=Number(s.value||0);var u=60;var x=Math.max(b*(d/u),0);var f=new Intl.NumberFormat('id-ID');var eb=document.getElementById('amount_base');if(eb)eb.textContent='Rp '+f.format(x);var et=document.getElementById('amount_total');if(et)et.textContent='Rp '+f.format(x);})(this)"
+                            oninput="window.recalc && window.recalc();(function(s){var b=Number(s.getAttribute('data-base')||0);var d=Number(s.value||0);var u=60;var x=Math.max(b*(d/u),0);var f=new Intl.NumberFormat('id-ID');var eb=document.getElementById('amount_base');if(eb)eb.textContent='Rp '+f.format(x);var et=document.getElementById('amount_total');if(et)et.textContent='Rp '+f.format(x);})(this)">
+                            @for ($m = $start; $m <= $end; $m += 60)
+                                <option value="{{ $m }}"
+                                    {{ (int) old('duration_minutes', $start) === $m ? 'selected' : '' }}>
+                                    {{ $m }} menit ({{ number_format($m / 60, 0) }} jam)
+                                </option>
+                            @endfor
+                        </select>
                         <span class="fld-ico"><i class="fa-solid fa-clock"></i></span>
                     </div>
                     @if (isset($minMinutes) && $minMinutes > 0)
@@ -472,11 +485,28 @@
 
             <div class="field">
                 <label class="label">Ringkasan Pembayaran</label>
+                @php($initSubtotal = (float) ($service->base_price ?? 0))
+                @php($unitType = trim((string) ($service->unit_type ?? 'Satuan')))
+                @if ($isDuration)
+                    @php($minBase = max((int) ($minMinutes ?? ($service->duration_minutes ?? 60)), 60))
+                    @php($start = max(120, $minBase))
+                    @php($selectedMinutes = (int) old('duration_minutes', $start))
+                    @php($initSubtotal = max($initSubtotal * ($selectedMinutes / 60), 0))
+                @elseif (strtoupper($unitType) === 'M2')
+                    @php($L = (float) old('length_m', 0))
+                    @php($W = (float) old('width_m', 0))
+                    @php($area = max($L * $W, 0))
+                    @php($initSubtotal = max($initSubtotal * $area, 0))
+                @else
+                    @php($qty = max((int) old('qty', 1), 1))
+                    @php($initSubtotal = max($initSubtotal * $qty, 0))
+                @endif
                 <div class="input-group" style="display:block;font-size:14px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;">
                         <span>Jumlah Pembayaran</span>
-                        <span id="amount_base">Rp
-                            {{ number_format((float) ($service->base_price ?? 0), 0, ',', '.') }}</span>
+                        <span id="amount_base">Rp {{ number_format($initSubtotal, 0, ',', '.') }}</span>
+                    </div>
+                    <div id="amount_calc" style="text-align:right; font-size:12px; color:#7b8ca6; margin:-2px 0 6px;">
                     </div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;">
                         <span>Promo</span>
@@ -484,8 +514,7 @@
                     </div>
                     <div style="display:flex;justify-content:space-between;font-weight:600;font-size:14px;">
                         <span>Total Pembayaran</span>
-                        <span id="amount_total">Rp
-                            {{ number_format((float) ($service->base_price ?? 0), 0, ',', '.') }}</span>
+                        <span id="amount_total">Rp {{ number_format($initSubtotal, 0, ',', '.') }}</span>
                     </div>
                 </div>
             </div>
@@ -552,7 +581,8 @@
                 {{ json_encode(strtolower(trim((string) ($service->unit_type ?? 'Durasi'))) === 'durasi') }});
             const unitType = String({{ json_encode(strtoupper(trim((string) ($service->unit_type ?? 'SATUAN')))) }});
             const promoInput = document.querySelector('input[name="promotion_code"]');
-            const durationInput = document.querySelector('input[name="duration_minutes"]');
+            const durationInput = document.getElementById('duration_minutes') || document.querySelector(
+                '[name="duration_minutes"]');
             const lenInput = document.querySelector('input[name="length_m"]');
             const widInput = document.querySelector('input[name="width_m"]');
             const qtyInput = document.querySelector('input[name="qty"]');
@@ -576,9 +606,31 @@
                 const q = Number(qtyInput && qtyInput.value || 1);
                 return Math.max(base * Math.max(q, 1), 0);
             }
+
+            function calcFormula() {
+                if (isDuration) {
+                    const d = Number(durationInput && durationInput.value || 0);
+                    const factor = Math.max(d / 60, 0);
+                    const factorStr = Number.isInteger(factor) ? String(factor) : factor.toFixed(2);
+                    return 'Rp ' + formatIDR(base) + ' * ' + factorStr;
+                }
+                if (unitType === 'M2') {
+                    const L = Number(lenInput && lenInput.value || 0);
+                    const W = Number(widInput && widInput.value || 0);
+                    const area = Math.max(L * W, 0);
+                    const areaStr = Number.isInteger(area) ? String(area) : area.toFixed(2);
+                    return 'Rp ' + formatIDR(base) + ' * ' + areaStr + ' m²';
+                }
+                const q = Math.max(Number(qtyInput && qtyInput.value || 1), 1);
+                return 'Rp ' + formatIDR(base) + ' * ' + q;
+            }
             async function recalc() {
                 const subtotal = calcSubtotal();
                 elBase.textContent = 'Rp ' + formatIDR(subtotal);
+                const elCalc = document.getElementById('amount_calc');
+                if (elCalc) {
+                    elCalc.textContent = calcFormula();
+                }
                 const code = (promoInput && promoInput.value || '').trim();
                 if (!code) {
                     elDisc.textContent = 'Rp 0';
@@ -586,8 +638,13 @@
                     return;
                 }
                 try {
-                    const url = '{{ route('customer.promo.validate') }}' + '?service_id=' + encodeURIComponent(
-                        svc) + '&code=' + encodeURIComponent(code) + '&amount=' + encodeURIComponent(subtotal);
+                    const baseUrl = @json(route('customer.promo.validate'));
+                    const params = new URLSearchParams({
+                        service_id: svc,
+                        code,
+                        amount: subtotal
+                    });
+                    const url = baseUrl + '?' + params.toString();
                     const res = await fetch(url, {
                         headers: {
                             'Accept': 'application/json'
@@ -602,6 +659,7 @@
                     elTotal.textContent = 'Rp ' + formatIDR(subtotal);
                 }
             }
+            window.recalc = recalc;
             if (promoInput) {
                 promoInput.addEventListener('input', recalc);
                 promoInput.addEventListener('change', recalc);
@@ -611,6 +669,12 @@
                 durationInput.addEventListener('change', recalc);
                 durationInput.addEventListener('keyup', recalc);
             }
+            document.addEventListener('change', function(e) {
+                const t = e.target;
+                if (t && t.id === 'duration_minutes') {
+                    recalc();
+                }
+            });
             if (lenInput) {
                 lenInput.addEventListener('input', recalc);
                 lenInput.addEventListener('change', recalc);

@@ -64,9 +64,9 @@
                             step="1000" placeholder="Contoh: 150000" required>
                     </div>
                     <div class="form-group col-md-2">
-                        <label for="duration_minutes">Durasi (menit)</label>
-                        <input type="number" id="duration_minutes" name="duration_minutes" class="form-control"
-                            min="0" step="15" placeholder="Contoh: 60" required>
+                        <label for="duration_hours">Durasi (jam)</label>
+                        <input type="number" id="duration_hours" name="duration_hours" class="form-control"
+                            min="1" step="1" placeholder="Contoh: 2" required>
                     </div>
                     <div class="form-group col-md-2">
                         <label for="active">Aktif</label>
@@ -113,7 +113,7 @@
                             <th>Kategori</th>
                             <th>Satuan/QTY</th>
                             <th>Harga Dasar</th>
-                            <th>Durasi (menit)</th>
+                            <th>Durasi (jam)</th>
                             <th>Icon</th>
                             <th>Aktif</th>
                             <th>Deskripsi</th>
@@ -151,9 +151,9 @@
                                         class="form-control form-control-sm" min="0" step="1000">
                                 </td>
                                 <td style="width:130px">
-                                    <input type="number" name="duration_minutes"
-                                        value="{{ $service->duration_minutes }}" class="form-control form-control-sm"
-                                        min="0" step="15">
+                                    <input type="number" name="duration_hours"
+                                        value="{{ max((int) ceil(($service->duration_minutes ?? 0) / 60), 0) }}" class="form-control form-control-sm"
+                                        min="1" step="1">
                                 </td>
                                 <td style="width:200px">
                                     <select name="icon" class="form-control form-control-sm">
@@ -210,7 +210,7 @@
     <script>
         function bindUnitTypeDisable() {
             var createUnit = document.getElementById('unit_type');
-            var createDuration = document.getElementById('duration_minutes');
+            var createDuration = document.getElementById('duration_hours');
             var toggle = function(sel, dur){ dur.disabled = sel.value !== 'Durasi'; };
             if (createUnit && createDuration) {
                 toggle(createUnit, createDuration);
@@ -219,11 +219,11 @@
             document.querySelectorAll('select[name="unit_type"]').forEach(function(s){
                 s.addEventListener('change', function(){
                     var row = s.closest('tr');
-                    var dur = row ? row.querySelector('input[name="duration_minutes"]') : null;
+                    var dur = row ? row.querySelector('input[name="duration_hours"]') : null;
                     if (dur) dur.disabled = s.value !== 'Durasi';
                 });
                 var row = s.closest('tr');
-                var dur = row ? row.querySelector('input[name="duration_minutes"]') : null;
+                var dur = row ? row.querySelector('input[name="duration_hours"]') : null;
                 if (dur) dur.disabled = s.value !== 'Durasi';
             });
         }
