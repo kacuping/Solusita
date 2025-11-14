@@ -157,14 +157,11 @@ Route::prefix('customer')->group(function () {
                 return back()->withErrors(['payment_method' => 'Metode pembayaran tidak tersedia.'])->withInput();
             }
 
-            $unitMinutes = (int) ($service->duration_minutes ?? 60);
-            if ($unitMinutes <= 0) {
-                $unitMinutes = 60;
-            }
+            $priceUnitMinutes = 60;
             $durationVal = (int) ($validated['duration_minutes'] ?? 0);
             $subtotal = (float) ($service->base_price ?? 0);
             if ($isDuration) {
-                $subtotal = (float) ($service->base_price ?? 0) * ($durationVal / $unitMinutes);
+                $subtotal = (float) ($service->base_price ?? 0) * ($durationVal / $priceUnitMinutes);
             } else {
                 $unit = strtoupper(trim((string) ($service->unit_type ?? 'SATUAN')));
                 if ($unit === 'M2') {

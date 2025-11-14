@@ -39,8 +39,10 @@
         .app {
             max-width: 420px;
             margin: 0 auto;
-            min-height: 100vh; /* fallback */
-            min-height: 100dvh; /* modern browsers */
+            min-height: 100vh;
+            /* fallback */
+            min-height: 100dvh;
+            /* modern browsers */
             padding-bottom: calc(var(--footer-height) + env(safe-area-inset-bottom, 0) + 12px);
             /* sedikit padding atas agar header tidak nempel dengan status bar saat inspect */
         }
@@ -349,17 +351,18 @@
             </div>
         </div>
 
-            <div class="summary">
+        <div class="summary">
             <div class="title">{{ $service->name }}</div>
-            @php($isDuration = strtolower(trim((string)($service->unit_type ?? 'Durasi'))) === 'durasi')
+            @php($isDuration = strtolower(trim((string) ($service->unit_type ?? 'Durasi'))) === 'durasi')
             <div class="meta">
-                @if($isDuration && (int)($service->duration_minutes ?? 0) > 0)
-                    Durasi: {{ (int)$service->duration_minutes }} menit
+                @if ($isDuration && (int) ($service->duration_minutes ?? 0) > 0)
+                    Durasi: {{ (int) $service->duration_minutes }} menit
                 @else
                     Satuan/QTY: {{ $service->unit_type ?? 'Satuan' }}
                 @endif
                 · Deskripsi:
-                {{ $service->description ?? 'Belum ada deskripsi.' }}</div>
+                {{ $service->description ?? 'Belum ada deskripsi.' }}
+            </div>
             <div class="price">Rp {{ number_format($service->base_price, 0, ',', '.') }}</div>
         </div>
 
@@ -396,45 +399,51 @@
                 </div>
             </div>
 
-            @php($unitType = trim((string)($service->unit_type ?? 'Satuan')))
-            @if($isDuration)
+            @php($unitType = trim((string) ($service->unit_type ?? 'Satuan')))
+            @if ($isDuration)
                 <div class="field">
                     <label class="label">Durasi (menit)</label>
                     <div class="input-group">
                         <input class="input" type="number" name="duration_minutes"
-                            value="{{ old('duration_minutes', max((int)($service->duration_minutes ?? 60), (int)($minMinutes ?? 0))) }}"
-                            min="{{ (int)($minMinutes ?? ($service->duration_minutes ?? 60)) }}" step="15" required autocomplete="off" />
+                            value="{{ old('duration_minutes', max((int) ($service->duration_minutes ?? 60), (int) ($minMinutes ?? 0))) }}"
+                            min="{{ (int) ($minMinutes ?? ($service->duration_minutes ?? 60)) }}" step="15"
+                            required autocomplete="off" />
                         <span class="fld-ico"><i class="fa-solid fa-clock"></i></span>
                     </div>
-                    @if(isset($minMinutes) && $minMinutes > 0)
-                    <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Minimal {{ $minMinutes }} menit (sesuai deskripsi layanan)</div>
+                    @if (isset($minMinutes) && $minMinutes > 0)
+                        <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Minimal {{ $minMinutes }} menit
+                            (sesuai deskripsi layanan)</div>
                     @endif
                 </div>
             @else
-                @if(strtoupper($unitType) === 'M2')
+                @if (strtoupper($unitType) === 'M2')
                     <div class="field">
                         <label class="label">Ukuran</label>
                         <div class="row dt-row">
                             <div class="col">
                                 <div class="input-group">
-                                    <input class="input" type="number" name="length_m" value="{{ old('length_m') }}" min="0.1" step="0.1" placeholder="Panjang (m)" autocomplete="off" />
+                                    <input class="input" type="number" name="length_m" value="{{ old('length_m') }}"
+                                        min="0.1" step="0.1" placeholder="Panjang (m)" autocomplete="off" />
                                     <span class="fld-ico"><i class="fa-solid fa-ruler-horizontal"></i></span>
                                 </div>
                             </div>
                             <div class="col">
                                 <div class="input-group">
-                                    <input class="input" type="number" name="width_m" value="{{ old('width_m') }}" min="0.1" step="0.1" placeholder="Lebar (m)" autocomplete="off" />
+                                    <input class="input" type="number" name="width_m" value="{{ old('width_m') }}"
+                                        min="0.1" step="0.1" placeholder="Lebar (m)" autocomplete="off" />
                                     <span class="fld-ico"><i class="fa-solid fa-ruler-combined"></i></span>
                                 </div>
                             </div>
                         </div>
-                        <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Masukkan ukuran dalam meter (m).</div>
+                        <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Masukkan ukuran dalam meter (m).
+                        </div>
                     </div>
                 @else
                     <div class="field">
                         <label class="label">Satuan/QTY</label>
                         <div class="input-group">
-                            <input class="input" type="number" name="qty" value="{{ old('qty', 1) }}" min="1" step="1" autocomplete="off" />
+                            <input class="input" type="number" name="qty" value="{{ old('qty', 1) }}"
+                                min="1" step="1" autocomplete="off" />
                             <span class="fld-ico"><i class="fa-solid fa-list-ol"></i></span>
                         </div>
                         <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Satuan: {{ $unitType }}</div>
@@ -466,7 +475,8 @@
                 <div class="input-group" style="display:block;font-size:14px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;">
                         <span>Jumlah Pembayaran</span>
-                        <span id="amount_base">Rp {{ number_format((float) ($service->base_price ?? 0), 0, ',', '.') }}</span>
+                        <span id="amount_base">Rp
+                            {{ number_format((float) ($service->base_price ?? 0), 0, ',', '.') }}</span>
                     </div>
                     <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;">
                         <span>Promo</span>
@@ -474,7 +484,8 @@
                     </div>
                     <div style="display:flex;justify-content:space-between;font-weight:600;font-size:14px;">
                         <span>Total Pembayaran</span>
-                        <span id="amount_total">Rp {{ number_format((float) ($service->base_price ?? 0), 0, ',', '.') }}</span>
+                        <span id="amount_total">Rp
+                            {{ number_format((float) ($service->base_price ?? 0), 0, ',', '.') }}</span>
                     </div>
                 </div>
             </div>
@@ -483,28 +494,34 @@
                 <label class="label">Metode Pembayaran</label>
                 <div class="input-group" style="display:block;font-size:14px;">
                     @php($hasAny = !empty($cashActive))
-                    @if(!empty($cashActive))
+                    @if (!empty($cashActive))
                         <div class="form-check" style="margin-bottom:6px;">
-                            <input class="form-check-input" type="radio" name="payment_method" id="pm_cash" value="cash" {{ old('payment_method')==='cash' ? 'checked' : '' }}>
-                            <label class="form-check-label" for="pm_cash" style="font-size:14px;">Tunai (Cash)</label>
+                            <input class="form-check-input" type="radio" name="payment_method" id="pm_cash"
+                                value="cash" {{ old('payment_method') === 'cash' ? 'checked' : '' }}>
+                            <label class="form-check-label" for="pm_cash" style="font-size:14px;">Tunai
+                                (Cash)</label>
                         </div>
                     @endif
-                    @foreach(($paymentOptions ?? []) as $opt)
-                        @if(!empty($opt['active']))
+                    @foreach ($paymentOptions ?? [] as $opt)
+                        @if (!empty($opt['active']))
                             @php($hasAny = true)
                             <div class="form-check" style="margin-bottom:6px;">
-                                <input class="form-check-input" type="radio" name="payment_method" id="pm_{{ $opt['id'] }}" value="option_{{ $opt['id'] }}" {{ old('payment_method')==='option_'.$opt['id'] ? 'checked' : '' }}>
-                                <label class="form-check-label" for="pm_{{ $opt['id'] }}" style="font-size:14px;">
+                                <input class="form-check-input" type="radio" name="payment_method"
+                                    id="pm_{{ $opt['id'] }}" value="option_{{ $opt['id'] }}"
+                                    {{ old('payment_method') === 'option_' . $opt['id'] ? 'checked' : '' }}>
+                                <label class="form-check-label" for="pm_{{ $opt['id'] }}"
+                                    style="font-size:14px;">
                                     {{ $opt['label'] }}
-                                    @if(($opt['type'] ?? '')==='transfer' && ($opt['bank_name'] ?? null))
+                                    @if (($opt['type'] ?? '') === 'transfer' && ($opt['bank_name'] ?? null))
                                         · {{ $opt['bank_name'] }}
                                     @endif
                                 </label>
                             </div>
                         @endif
                     @endforeach
-                    @unless($hasAny)
-                        <div class="alert alert-warning" style="padding:6px 10px;">Belum ada metode pembayaran aktif. Hubungi admin.</div>
+                    @unless ($hasAny)
+                        <div class="alert alert-warning" style="padding:6px 10px;">Belum ada metode pembayaran aktif.
+                            Hubungi admin.</div>
                     @endunless
                 </div>
             </div>
@@ -520,12 +537,20 @@
         </div>
     </div>
     <script>
-        (function(){
-            function formatIDR(n){ try { n = Math.round(Number(n)); } catch(e) { n = 0; } return new Intl.NumberFormat('id-ID').format(n); }
+        (function() {
+            function formatIDR(n) {
+                try {
+                    n = Math.round(Number(n));
+                } catch (e) {
+                    n = 0;
+                }
+                return new Intl.NumberFormat('id-ID').format(n);
+            }
             const base = Number({{ (float) ($service->base_price ?? 0) }});
             const unitMinutes = Number({{ (int) ($service->duration_minutes ?? 60) }} || 60);
-            const isDuration = Boolean({{ json_encode(strtolower(trim((string)($service->unit_type ?? 'Durasi'))) === 'durasi') }});
-            const unitType = String({{ json_encode(strtoupper(trim((string)($service->unit_type ?? 'SATUAN')))) }});
+            const isDuration = Boolean(
+                {{ json_encode(strtolower(trim((string) ($service->unit_type ?? 'Durasi'))) === 'durasi') }});
+            const unitType = String({{ json_encode(strtoupper(trim((string) ($service->unit_type ?? 'SATUAN')))) }});
             const promoInput = document.querySelector('input[name="promotion_code"]');
             const durationInput = document.querySelector('input[name="duration_minutes"]');
             const lenInput = document.querySelector('input[name="length_m"]');
@@ -535,13 +560,14 @@
             const elBase = document.getElementById('amount_base');
             const elDisc = document.getElementById('amount_discount');
             const elTotal = document.getElementById('amount_total');
-            function calcSubtotal(){
-                if(isDuration){
+
+            function calcSubtotal() {
+                if (isDuration) {
                     const d = Number(durationInput && durationInput.value || 0);
-                    const u = unitMinutes > 0 ? unitMinutes : 60;
+                    const u = 60;
                     return Math.max(base * (d / u), 0);
                 }
-                if(unitType === 'M2'){
+                if (unitType === 'M2') {
                     const L = Number(lenInput && lenInput.value || 0);
                     const W = Number(widInput && widInput.value || 0);
                     const area = Math.max(L * W, 0);
@@ -550,25 +576,56 @@
                 const q = Number(qtyInput && qtyInput.value || 1);
                 return Math.max(base * Math.max(q, 1), 0);
             }
-            async function recalc(){
+            async function recalc() {
                 const subtotal = calcSubtotal();
                 elBase.textContent = 'Rp ' + formatIDR(subtotal);
                 const code = (promoInput && promoInput.value || '').trim();
-                if(!code){ elDisc.textContent = 'Rp 0'; elTotal.textContent = 'Rp '+formatIDR(subtotal); return; }
-                try{
-                    const url = '{{ route('customer.promo.validate') }}' + '?service_id=' + encodeURIComponent(svc) + '&code=' + encodeURIComponent(code) + '&amount=' + encodeURIComponent(subtotal);
-                    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!code) {
+                    elDisc.textContent = 'Rp 0';
+                    elTotal.textContent = 'Rp ' + formatIDR(subtotal);
+                    return;
+                }
+                try {
+                    const url = '{{ route('customer.promo.validate') }}' + '?service_id=' + encodeURIComponent(
+                        svc) + '&code=' + encodeURIComponent(code) + '&amount=' + encodeURIComponent(subtotal);
+                    const res = await fetch(url, {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
                     const j = await res.json();
                     const disc = j && j.ok ? Number(j.discount || 0) : 0;
                     elDisc.textContent = 'Rp ' + formatIDR(disc);
                     elTotal.textContent = 'Rp ' + formatIDR(Math.max(subtotal - disc, 0));
-                }catch(e){ elDisc.textContent = 'Rp 0'; elTotal.textContent = 'Rp '+formatIDR(subtotal); }
+                } catch (e) {
+                    elDisc.textContent = 'Rp 0';
+                    elTotal.textContent = 'Rp ' + formatIDR(subtotal);
+                }
             }
-            if(promoInput){ promoInput.addEventListener('input', recalc); promoInput.addEventListener('change', recalc); }
-            if(durationInput){ durationInput.addEventListener('input', recalc); durationInput.addEventListener('change', recalc); durationInput.addEventListener('keyup', recalc); }
-            if(lenInput){ lenInput.addEventListener('input', recalc); lenInput.addEventListener('change', recalc); lenInput.addEventListener('keyup', recalc); }
-            if(widInput){ widInput.addEventListener('input', recalc); widInput.addEventListener('change', recalc); widInput.addEventListener('keyup', recalc); }
-            if(qtyInput){ qtyInput.addEventListener('input', recalc); qtyInput.addEventListener('change', recalc); qtyInput.addEventListener('keyup', recalc); }
+            if (promoInput) {
+                promoInput.addEventListener('input', recalc);
+                promoInput.addEventListener('change', recalc);
+            }
+            if (durationInput) {
+                durationInput.addEventListener('input', recalc);
+                durationInput.addEventListener('change', recalc);
+                durationInput.addEventListener('keyup', recalc);
+            }
+            if (lenInput) {
+                lenInput.addEventListener('input', recalc);
+                lenInput.addEventListener('change', recalc);
+                lenInput.addEventListener('keyup', recalc);
+            }
+            if (widInput) {
+                widInput.addEventListener('input', recalc);
+                widInput.addEventListener('change', recalc);
+                widInput.addEventListener('keyup', recalc);
+            }
+            if (qtyInput) {
+                qtyInput.addEventListener('input', recalc);
+                qtyInput.addEventListener('change', recalc);
+                qtyInput.addEventListener('keyup', recalc);
+            }
             recalc();
         })();
     </script>
