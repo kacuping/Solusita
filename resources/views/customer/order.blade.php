@@ -345,7 +345,29 @@
 
 <body>
     <script>
-        window.recalc = window.recalc || function() {};
+        (function() {
+            var F = new Intl.NumberFormat('id-ID');
+            window.recalc = window.recalc || function() {};
+            window.updateM2 = function(i) {
+                try {
+                    var b = Number(i.getAttribute('data-base') || 0);
+                    var row = i.closest('.row') || document;
+                    var L = Number(((row.querySelector('input[name="length_m"]') || {
+                        value: 0
+                    }).value) || 0);
+                    var W = Number(((row.querySelector('input[name="width_m"]') || {
+                        value: 0
+                    }).value) || 0);
+                    var area = Math.max(L * W, 0);
+                    var x = Math.max(b * area, 0);
+                    var eb = document.getElementById('amount_base');
+                    if (eb) eb.textContent = 'Rp ' + F.format(x);
+                    var et = document.getElementById('amount_total');
+                    if (et) et.textContent = 'Rp ' + F.format(x);
+                } catch (e) {}
+                if (window.recalc) window.recalc();
+            };
+        })();
     </script>
     <div class="app">
         <div class="header">
@@ -436,14 +458,20 @@
                             <div class="col">
                                 <div class="input-group">
                                     <input class="input" type="number" name="length_m" value="{{ old('length_m') }}"
-                                        min="0.1" step="0.1" placeholder="Panjang (m)" autocomplete="off" />
+                                        min="0.1" step="0.1" placeholder="Panjang (m)" autocomplete="off"
+                                        data-base="{{ (float) ($service->base_price ?? 0) }}"
+                                        onchange="window.updateM2 && window.updateM2(this)"
+                                        oninput="window.updateM2 && window.updateM2(this)" />
                                     <span class="fld-ico"><i class="fa-solid fa-ruler-horizontal"></i></span>
                                 </div>
                             </div>
                             <div class="col">
                                 <div class="input-group">
                                     <input class="input" type="number" name="width_m" value="{{ old('width_m') }}"
-                                        min="0.1" step="0.1" placeholder="Lebar (m)" autocomplete="off" />
+                                        min="0.1" step="0.1" placeholder="Lebar (m)" autocomplete="off"
+                                        data-base="{{ (float) ($service->base_price ?? 0) }}"
+                                        onchange="window.updateM2 && window.updateM2(this)"
+                                        oninput="window.updateM2 && window.updateM2(this)" />
                                     <span class="fld-ico"><i class="fa-solid fa-ruler-combined"></i></span>
                                 </div>
                             </div>
@@ -456,7 +484,10 @@
                         <label class="label">Satuan/QTY</label>
                         <div class="input-group">
                             <input class="input" type="number" name="qty" value="{{ old('qty', 1) }}"
-                                min="1" step="1" autocomplete="off" />
+                                min="1" step="1" autocomplete="off"
+                                data-base="{{ (float) ($service->base_price ?? 0) }}"
+                                onchange="window.recalc && window.recalc();(function(i){var b=Number(i.getAttribute('data-base')||0);var q=Math.max(Number(i.value||1),1);var x=Math.max(b*q,0);var f=new Intl.NumberFormat('id-ID');var eb=document.getElementById('amount_base');if(eb)eb.textContent='Rp '+f.format(x);var et=document.getElementById('amount_total');if(et)et.textContent='Rp '+f.format(x);})(this)"
+                                oninput="window.recalc && window.recalc();(function(i){var b=Number(i.getAttribute('data-base')||0);var q=Math.max(Number(i.value||1),1);var x=Math.max(b*q,0);var f=new Intl.NumberFormat('id-ID');var eb=document.getElementById('amount_base');if(eb)eb.textContent='Rp '+f.format(x);var et=document.getElementById('amount_total');if(et)et.textContent='Rp '+f.format(x);})(this)" />
                             <span class="fld-ico"><i class="fa-solid fa-list-ol"></i></span>
                         </div>
                         <div style="font-size:12px; color:#7b8ca6; margin-top:4px;">Satuan: {{ $unitType }}</div>
