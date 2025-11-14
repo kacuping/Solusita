@@ -29,15 +29,22 @@
     <div class="app">
         <div class="receipt">
             <div class="title">Struk Pesanan #{{ $booking->id }}</div>
-            @php($orderNo = null)
-            @php($n = (string)($booking->notes ?? ''))
-            @php(if($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $m)) { $orderNo = $m[1]; })
-            @if($orderNo)
+            @if(!empty($orderNo))
                 <div class="line"><span>No. Order</span><span>{{ $orderNo }}</span></div>
             @endif
             <div class="line"><span>Layanan</span><span>{{ $service->name ?? 'Layanan' }}</span></div>
             <div class="line"><span>Jadwal</span><span>{{ optional($booking->scheduled_at)->format('d M Y H:i') }}</span></div>
-            <div class="line"><span>Durasi</span><span>{{ $booking->duration_minutes }} menit</span></div>
+            @php($isDuration = strtolower(trim((string)($service->unit_type ?? 'Durasi'))) === 'durasi')
+            @if($isDuration)
+                <div class="line"><span>Durasi</span><span>{{ (int)($booking->duration_minutes ?? 0) }} menit</span></div>
+            @else
+                @php($n = (string)($booking->notes ?? ''))
+                @if($n !== '' && preg_match('/Ukuran:\s*Panjang\s*([0-9.]+)m,\s*Lebar\s*([0-9.]+)m/i', $n, $mm))
+                    <div class="line"><span>Ukuran</span><span>{{ $mm[1] }}m x {{ $mm[2] }}m</span></div>
+                @elseif($n !== '' && preg_match('/Qty:\s*(\d+)/i', $n, $qm))
+                    <div class="line"><span>Qty</span><span>{{ $qm[1] }} · Satuan: {{ $service->unit_type ?? 'Satuan' }}</span></div>
+                @endif
+            @endif
             <div class="divider"></div>
             <div class="line" style="font-weight:700"><span>Total</span><span>Rp {{ number_format((float)($booking->total_amount ?? 0), 0, ',', '.') }}</span></div>
             <div class="divider"></div>

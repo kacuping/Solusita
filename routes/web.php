@@ -165,6 +165,17 @@ Route::prefix('customer')->group(function () {
             $subtotal = (float) ($service->base_price ?? 0);
             if ($isDuration) {
                 $subtotal = (float) ($service->base_price ?? 0) * ($durationVal / $unitMinutes);
+            } else {
+                $unit = strtoupper(trim((string) ($service->unit_type ?? 'SATUAN')));
+                if ($unit === 'M2') {
+                    $L = (float) ($validated['length_m'] ?? 0);
+                    $W = (float) ($validated['width_m'] ?? 0);
+                    $area = max($L * $W, 0);
+                    $subtotal = (float) ($service->base_price ?? 0) * $area;
+                } else {
+                    $Q = (int) ($validated['qty'] ?? 1);
+                    $subtotal = (float) ($service->base_price ?? 0) * max($Q, 1);
+                }
             }
             $discount = 0.0;
             $promoCode = trim((string) ($validated['promotion_code'] ?? ''));
@@ -261,12 +272,18 @@ Route::prefix('customer')->group(function () {
                 }
             }
             $service = \App\Models\Service::find($booking->service_id);
+            $orderNo = null;
+            $n = (string) ($booking->notes ?? '');
+            if ($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $mm)) {
+                $orderNo = $mm[1];
+            }
 
             return view('customer.payment', [
                 'booking' => $booking,
                 'service' => $service,
                 'method' => $method,
                 'paymentOption' => $selectedOption,
+                'orderNo' => $orderNo,
             ]);
         })->name('customer.payment.show');
 

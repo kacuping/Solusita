@@ -525,17 +525,30 @@
             const base = Number({{ (float) ($service->base_price ?? 0) }});
             const unitMinutes = Number({{ (int) ($service->duration_minutes ?? 60) }} || 60);
             const isDuration = Boolean({{ json_encode(strtolower(trim((string)($service->unit_type ?? 'Durasi'))) === 'durasi') }});
+            const unitType = String({{ json_encode(strtoupper(trim((string)($service->unit_type ?? 'SATUAN')))) }});
             const promoInput = document.querySelector('input[name="promotion_code"]');
             const durationInput = document.querySelector('input[name="duration_minutes"]');
+            const lenInput = document.querySelector('input[name="length_m"]');
+            const widInput = document.querySelector('input[name="width_m"]');
+            const qtyInput = document.querySelector('input[name="qty"]');
             const svc = document.querySelector('input[name="service_id"]').value;
             const elBase = document.getElementById('amount_base');
             const elDisc = document.getElementById('amount_discount');
             const elTotal = document.getElementById('amount_total');
             function calcSubtotal(){
-                if(!isDuration){ return Math.max(base, 0); }
-                const d = Number(durationInput && durationInput.value || 0);
-                const u = unitMinutes > 0 ? unitMinutes : 60;
-                return Math.max(base * (d / u), 0);
+                if(isDuration){
+                    const d = Number(durationInput && durationInput.value || 0);
+                    const u = unitMinutes > 0 ? unitMinutes : 60;
+                    return Math.max(base * (d / u), 0);
+                }
+                if(unitType === 'M2'){
+                    const L = Number(lenInput && lenInput.value || 0);
+                    const W = Number(widInput && widInput.value || 0);
+                    const area = Math.max(L * W, 0);
+                    return Math.max(base * area, 0);
+                }
+                const q = Number(qtyInput && qtyInput.value || 1);
+                return Math.max(base * Math.max(q, 1), 0);
             }
             async function recalc(){
                 const subtotal = calcSubtotal();
@@ -553,6 +566,9 @@
             }
             if(promoInput){ promoInput.addEventListener('input', recalc); }
             if(durationInput){ durationInput.addEventListener('input', recalc); }
+            if(lenInput){ lenInput.addEventListener('input', recalc); }
+            if(widInput){ widInput.addEventListener('input', recalc); }
+            if(qtyInput){ qtyInput.addEventListener('input', recalc); }
             recalc();
         })();
     </script>
