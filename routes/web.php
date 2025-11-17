@@ -258,7 +258,25 @@ Route::prefix('customer')->group(function () {
 
             // Append detail order ke notes: metode, unit/qty/ukuran, dan nomor order
             $info = [];
-            $info[] = 'Metode Pembayaran: '.$validated['payment_method'];
+            // Tulis label manusia untuk metode pembayaran dan simpan key mentah untuk fallback
+            $pmRaw = (string) $validated['payment_method'];
+            $pmLabel = null;
+            if ($pmRaw === 'cash') {
+                $pmLabel = 'Tunai (Cash)';
+            } elseif (str_starts_with($pmRaw, 'option_')) {
+                $pmId = substr($pmRaw, strlen('option_'));
+                foreach ($options as $opt) {
+                    if ((string) ($opt['id'] ?? '') === (string) $pmId) {
+                        $pmLabel = ($opt['label'] ?? null);
+                        if (($opt['type'] ?? '') === 'transfer' && ($opt['bank_name'] ?? null)) {
+                            $pmLabel = trim(($pmLabel ?: 'Transfer').' · '.($opt['bank_name']));
+                        }
+                        break;
+                    }
+                }
+            }
+            $info[] = 'Metode Pembayaran: '.($pmLabel ?: $pmRaw);
+            $info[] = 'PaymentKey: '.$pmRaw;
             $unit = strtoupper(trim((string) ($service->unit_type ?? 'SATUAN')));
             if (! $isDuration) {
                 if ($unit === 'M2') {
@@ -287,7 +305,10 @@ Route::prefix('customer')->group(function () {
             $method = (string) $request->query('method', '');
             if ($method === '') {
                 $n = (string) ($booking->notes ?? '');
-                if (preg_match('/Metode Pembayaran:\s*(cash|option_[a-z0-9-]+)/i', $n, $m)) {
+                // Prefer PaymentKey jika tersedia
+                if (preg_match('/PaymentKey\s*:\s*(cash|option_[a-z0-9-]+)/i', $n, $m)) {
+                    $method = strtolower($m[1]);
+                } elseif (preg_match('/Metode Pembayaran:\s*(cash|option_[a-z0-9-]+)/i', $n, $m)) {
                     $method = strtolower($m[1]);
                 }
             }
@@ -552,8 +573,14 @@ Route::middleware('auth')->group(function () {
                     $assistantNames[$b->id] = $names;
                 }
             }
-            if ($notes !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*([^|]+)/i', $notes, $mm)) {
+            // Ambil PaymentKey terlebih dahulu jika ada, fallback ke Metode Pembayaran
+            $raw = null;
+            if ($notes !== '' && preg_match('/PaymentKey\s*:\s*([^|]+)/i', $notes, $mmk)) {
+                $raw = strtolower(trim((string) $mmk[1]));
+            } elseif ($notes !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*([^|]+)/i', $notes, $mm)) {
                 $raw = strtolower(trim((string) $mm[1]));
+            }
+            if ($raw !== null) {
                 if ($raw === 'cash') {
                     $paymentMethods[$b->id] = 'Tunai (Cash)';
                 } elseif (str_starts_with($raw, 'option_')) {
