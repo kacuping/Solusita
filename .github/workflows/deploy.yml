@@ -76,7 +76,7 @@ jobs:
           remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
           # Opsi mirror: hanya kirim file lebih baru, hapus file lama di server agar identik
-          options: "--only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .git --exclude-glob node_modules --exclude-glob storage/framework --exclude-glob storage/logs --exclude-glob .env"
+          options: "--only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
 
       # Upload incremental via SFTP mirror dengan key (fallback jika tidak memakai password)
       - name: Upload only changed files (SFTP mirror - key)
@@ -96,7 +96,7 @@ jobs:
           localDir: './'
           remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
-          options: "--only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .git --exclude-glob node_modules --exclude-glob storage/framework --exclude-glob storage/logs --exclude-glob .env"
+          options: "--only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
 
       - name: Run post-deploy commands on server (Composer, cache, migrate)
         if: ${{ success() && env.SSH_PRIVATE_KEY != '' }}
