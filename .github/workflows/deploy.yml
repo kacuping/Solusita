@@ -63,6 +63,32 @@ jobs:
           fi
           echo "OK: Secrets minimum terpenuhi. Lanjut ke langkah upload incremental via SFTP."
 
+      - name: Preflight SSH (key)
+        if: ${{ env.SSH_PRIVATE_KEY != '' }}
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ env.SFTP_SERVER }}
+          username: ${{ env.SFTP_USERNAME }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          port: ${{ env.SFTP_PORT }}
+          script: |
+            set -e
+            echo "Remote path: ${{ env.SFTP_REMOTE_PATH }}"
+            ls -la ${{ env.SFTP_REMOTE_PATH }} || true
+
+      - name: Preflight SSH (password)
+        if: ${{ env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' }}
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ env.SFTP_SERVER }}
+          username: ${{ env.SFTP_USERNAME }}
+          password: ${{ env.SSH_PASSWORD }}
+          port: ${{ env.SFTP_PORT }}
+          script: |
+            set -e
+            echo "Remote path: ${{ env.SFTP_REMOTE_PATH }}"
+            ls -la ${{ env.SFTP_REMOTE_PATH }} || true
+
       # Upload incremental (hanya file yang berubah) via SFTP mirror dengan password
       - name: Upload only changed files (SFTP mirror - password)
         if: ${{ env.SFTP_PASSWORD != '' }}
@@ -77,7 +103,7 @@ jobs:
           remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
           # Opsi mirror: hanya kirim file lebih baru, hapus file lama di server agar identik
-          options: "--only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
+          options: "--ignore-time --only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
 
       # Upload incremental via SFTP mirror dengan key (fallback jika tidak memakai password)
       - name: Upload only changed files (SFTP mirror - key)
@@ -97,7 +123,7 @@ jobs:
           localDir: './'
           remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
-          options: "--only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
+          options: "--ignore-time --only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
 
       # Upload folder public secara terpisah (password)
       - name: Upload public directory (SFTP mirror - password)
@@ -112,7 +138,7 @@ jobs:
           localDir: './public'
           remoteDir: ${{ endsWith(env.SFTP_REMOTE_PATH, '/public') && env.SFTP_REMOTE_PATH || format('{0}/public', env.SFTP_REMOTE_PATH) }}
           reverse: true
-          options: "--only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .env"
+          options: "--ignore-time --only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .env"
 
       # Upload folder public secara terpisah (key)
       - name: Upload public directory (SFTP mirror - key)
@@ -129,7 +155,37 @@ jobs:
           localDir: './public'
           remoteDir: ${{ endsWith(env.SFTP_REMOTE_PATH, '/public') && env.SFTP_REMOTE_PATH || format('{0}/public', env.SFTP_REMOTE_PATH) }}
           reverse: true
-          options: "--only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .env"
+          options: "--ignore-time --only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .env"
+
+      - name: Diagnose remote after upload (key)
+        if: ${{ success() && env.SSH_PRIVATE_KEY != '' }}
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ env.SFTP_SERVER }}
+          username: ${{ env.SFTP_USERNAME }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          port: ${{ env.SFTP_PORT }}
+          script: |
+            set -e
+            echo "Root listing:"
+            ls -la ${{ env.SFTP_REMOTE_PATH }} | head -n 200 || true
+            echo "Public listing:"
+            ls -la ${{ endsWith(env.SFTP_REMOTE_PATH, '/public') && env.SFTP_REMOTE_PATH || format('{0}/public', env.SFTP_REMOTE_PATH) }} | head -n 200 || true
+
+      - name: Diagnose remote after upload (password)
+        if: ${{ success() && env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' }}
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ env.SFTP_SERVER }}
+          username: ${{ env.SFTP_USERNAME }}
+          password: ${{ env.SSH_PASSWORD }}
+          port: ${{ env.SFTP_PORT }}
+          script: |
+            set -e
+            echo "Root listing:"
+            ls -la ${{ env.SFTP_REMOTE_PATH }} | head -n 200 || true
+            echo "Public listing:"
+            ls -la ${{ endsWith(env.SFTP_REMOTE_PATH, '/public') && env.SFTP_REMOTE_PATH || format('{0}/public', env.SFTP_REMOTE_PATH) }} | head -n 200 || true
 
       - name: Run post-deploy commands on server (Composer, cache, migrate)
         if: ${{ success() && env.SSH_PRIVATE_KEY != '' }}
