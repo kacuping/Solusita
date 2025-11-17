@@ -1,6 +1,10 @@
 {
     "name": "Solusita",
     "short_name": "Solusita",
+    "description": "Solusita: pemesanan layanan kebersihan, jadwal, dan pembayaran pelanggan.",
+    "lang": "id",
+    "dir": "ltr",
+    "orientation": "portrait",
     "start_url": "/customer/home",
     "scope": "/customer/",
     "display": "standalone",
