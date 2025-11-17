@@ -48,4 +48,4 @@ Thank you for considering contributing to the Laravel framework! The contributio
 Kacuping
 
 https://solusita.luasbidang.com/login
-Cek Laravel
+Update Laravel
