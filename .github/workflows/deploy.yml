@@ -67,9 +67,6 @@ jobs:
       - name: Compute deploy variables
         run: |
           set -e
-          PROTO="sftp"
-          if [ "${SFTP_PORT}" = "21" ]; then PROTO="ftp"; fi
-          echo "REMOTE_PROTOCOL=${PROTO}" >> $GITHUB_ENV
           RP=$(printf "%s" "${SFTP_REMOTE_PATH}" | xargs)
           RP="${RP%/}"
           PUB=$(printf "%s" "${SFTP_REMOTE_PUBLIC_PATH}" | xargs)
@@ -83,7 +80,6 @@ jobs:
           PUB="${PUB%/}"
           echo "SFTP_REMOTE_PATH=${RP}" >> $GITHUB_ENV
           echo "REMOTE_PUBLIC_PATH=${PUB}" >> $GITHUB_ENV
-          echo "Protocol=${PROTO}"
           echo "Remote path=${RP}"
           echo "Public path=${PUB}"
 
@@ -119,10 +115,10 @@ jobs:
         uses: pressidium/lftp-mirror-action@v1
         with:
           host: ${{ env.SFTP_SERVER }}
-          remote-protocol: ${{ env.REMOTE_PROTOCOL }}
           port: ${{ env.SFTP_PORT }}
           user: ${{ env.SFTP_USERNAME }}
           pass: ${{ env.SFTP_PASSWORD }}
+          settings: 'sftp:auto-confirm=yes'
           localDir: './'
           remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
@@ -137,9 +133,9 @@ jobs:
           LFTP_PASSWORD: ''
         with:
           host: ${{ env.SFTP_SERVER }}
-          remote-protocol: ${{ env.REMOTE_PROTOCOL }}
           port: ${{ env.SFTP_PORT }}
           user: ${{ env.SFTP_USERNAME }}
+          settings: 'sftp:auto-confirm=yes'
           # Catatan: untuk auth key-based, host harus menerima public key Anda via hPanel
           # Action ini terutama untuk password, sehingga disarankan mengisi SFTP_PASSWORD.
           # Jika host mendukung key-agent, Anda dapat menggunakan konfigurasi server.
@@ -155,10 +151,10 @@ jobs:
         uses: pressidium/lftp-mirror-action@v1
         with:
           host: ${{ env.SFTP_SERVER }}
-          remote-protocol: ${{ env.REMOTE_PROTOCOL }}
           port: ${{ env.SFTP_PORT }}
           user: ${{ env.SFTP_USERNAME }}
           pass: ${{ env.SFTP_PASSWORD }}
+          settings: 'sftp:auto-confirm=yes'
           localDir: './public'
           remoteDir: ${{ env.REMOTE_PUBLIC_PATH }}
           reverse: true
@@ -172,10 +168,10 @@ jobs:
           LFTP_PASSWORD: ''
         with:
           host: ${{ env.SFTP_SERVER }}
-          remote-protocol: ${{ env.REMOTE_PROTOCOL }}
           port: ${{ env.SFTP_PORT }}
           user: ${{ env.SFTP_USERNAME }}
           pass: ${{ env.LFTP_PASSWORD }}
+          settings: 'sftp:auto-confirm=yes'
           localDir: './public'
           remoteDir: ${{ env.REMOTE_PUBLIC_PATH }}
           reverse: true
