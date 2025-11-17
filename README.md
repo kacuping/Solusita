@@ -48,11 +48,4 @@ Thank you for considering contributing to the Laravel framework! The contributio
 Kacuping
 
 https://solusita.luasbidang.com/login
-
-Full Service
-cek Solusita
-Create By Kacuping
-SOLUSITA
-Cek Deploy ulang
-cek connect
-cek connect2
+Update
