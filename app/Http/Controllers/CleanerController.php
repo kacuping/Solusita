@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Cleaner;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class CleanerController extends Controller
 {
@@ -16,7 +17,8 @@ class CleanerController extends Controller
 
     public function index()
     {
-        $cleaners = Cleaner::orderBy('full_name')->paginate(10);
+        $nameColumn = Schema::hasColumn('cleaners', 'full_name') ? 'full_name' : 'name';
+        $cleaners = Cleaner::orderBy($nameColumn)->paginate(10);
         return view('cleaners.index', compact('cleaners'));
     }
 
@@ -38,14 +40,18 @@ class CleanerController extends Controller
             'bank_account_name' => ['nullable', 'string', 'max:255'],
         ]);
 
-        // Untuk kompatibilitas dengan skema lama yang menggunakan kolom 'name'
         $data = $validated;
-        $data['name'] = $validated['full_name'] ?? null;
-        // Set default status dan aktif untuk alur approval
+        if (Schema::hasColumn('cleaners', 'name')) {
+            $data['name'] = $validated['full_name'] ?? null;
+        }
         $data['status'] = 'pending';
         $data['active'] = false;
 
-        Cleaner::create($data);
+        $filtered = collect($data)->filter(function ($v, $k) {
+            return Schema::hasColumn('cleaners', $k);
+        })->all();
+
+        Cleaner::create($filtered);
 
         return redirect()->route('cleaners.index')->with('success', 'Petugas berhasil ditambahkan. Menunggu approval agar menjadi aktif.');
     }
@@ -68,11 +74,16 @@ class CleanerController extends Controller
             'bank_account_name' => ['nullable', 'string', 'max:255'],
         ]);
 
-        // Sinkronkan kolom 'name' untuk kompatibilitas
         $data = $validated;
-        $data['name'] = $validated['full_name'] ?? $cleaner->name;
+        if (Schema::hasColumn('cleaners', 'name')) {
+            $data['name'] = $validated['full_name'] ?? $cleaner->name;
+        }
 
-        $cleaner->update($data);
+        $filtered = collect($data)->filter(function ($v, $k) {
+            return Schema::hasColumn('cleaners', $k);
+        })->all();
+
+        $cleaner->update($filtered);
 
         return redirect()->route('cleaners.index')->with('success', 'Petugas berhasil diperbarui.');
     }
