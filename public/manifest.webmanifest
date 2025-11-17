@@ -5,7 +5,7 @@
     "lang": "id",
     "dir": "ltr",
     "orientation": "portrait",
-    "start_url": "/customer/home",
+    "start_url": "/customer/login",
     "scope": "/customer/",
     "display": "standalone",
     "background_color": "#f2f6ff",
