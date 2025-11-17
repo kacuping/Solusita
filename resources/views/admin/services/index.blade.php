@@ -14,7 +14,7 @@
     @if (isset($distinctCategoryCount) && $distinctCategoryCount < 3)
         <div class="alert alert-warning">
             <strong>Perhatian:</strong> Minimal harus ada <strong>3 kategori layanan aktif</strong> agar halaman pelanggan
-            (/customer/home) dapat menampilkan grid layanan dengan baik.
+            dapat menampilkan grid layanan dengan baik.
             Tambahkan layanan dengan kategori berbeda hingga mencapai minimal 3.
         </div>
     @endif
@@ -39,7 +39,7 @@
                         <label for="category">Kategori <span class="text-danger">*</span></label>
                         <select id="category" name="category" class="form-control" required>
                             <option value="">Pilih kategori</option>
-                            @foreach(($categoryOptions ?? []) as $cat)
+                            @foreach ($categoryOptions ?? [] as $cat)
                                 <option value="{{ $cat->name }}">{{ $cat->name }}</option>
                             @endforeach
                         </select>
@@ -65,8 +65,8 @@
                     </div>
                     <div class="form-group col-md-2">
                         <label for="duration_hours">Durasi (jam)</label>
-                        <input type="number" id="duration_hours" name="duration_hours" class="form-control"
-                            min="1" step="1" placeholder="Contoh: 2" required>
+                        <input type="number" id="duration_hours" name="duration_hours" class="form-control" min="1"
+                            step="1" placeholder="Contoh: 2" required>
                     </div>
                     <div class="form-group col-md-2">
                         <label for="active">Aktif</label>
@@ -75,11 +75,26 @@
                             <option value="0">Tidak</option>
                         </select>
                     </div>
-                    @php($icons = ['fa-broom','fa-couch','fa-shower','fa-utensils','fa-spray-can','fa-brush','fa-soap','fa-wind','fa-snowflake'])
+                    @php($icons = ['fa-broom', 'fa-couch', 'fa-shower', 'fa-utensils', 'fa-spray-can', 'fa-brush', 'fa-soap', 'fa-wind', 'fa-snowflake'])
                     <style>
-                        .icon-picker{display:flex;flex-wrap:wrap;gap:8px}
-                        .icon-option{border:1px solid #ddd;border-radius:6px;background:#fff;padding:6px 8px;cursor:pointer}
-                        .icon-option.active{border-color:#2a57c4;box-shadow:0 0 0 2px rgba(42,87,196,.15)}
+                        .icon-picker {
+                            display: flex;
+                            flex-wrap: wrap;
+                            gap: 8px
+                        }
+
+                        .icon-option {
+                            border: 1px solid #ddd;
+                            border-radius: 6px;
+                            background: #fff;
+                            padding: 6px 8px;
+                            cursor: pointer
+                        }
+
+                        .icon-option.active {
+                            border-color: #2a57c4;
+                            box-shadow: 0 0 0 2px rgba(42, 87, 196, .15)
+                        }
                     </style>
                     <div class="form-group col-md-3">
                         <label for="icon">Icon</label>
@@ -88,7 +103,7 @@
                             <button type="button" class="icon-option" data-value="">
                                 <span>Default</span>
                             </button>
-                            @foreach($icons as $ic)
+                            @foreach ($icons as $ic)
                                 <button type="button" class="icon-option" data-value="{{ $ic }}">
                                     <i class="fa {{ $ic }}" style="font-size:18px"></i>
                                 </button>
@@ -134,15 +149,19 @@
                                 </td>
                                 <td style="width:200px">
                                     <select name="category" class="form-control form-control-sm">
-                                        @foreach(($categoryOptions ?? []) as $cat)
-                                            <option value="{{ $cat->name }}" {{ $service->category === $cat->name ? 'selected' : '' }}>{{ $cat->name }}</option>
+                                        @foreach ($categoryOptions ?? [] as $cat)
+                                            <option value="{{ $cat->name }}"
+                                                {{ $service->category === $cat->name ? 'selected' : '' }}>
+                                                {{ $cat->name }}</option>
                                         @endforeach
                                     </select>
                                 </td>
                                 <td style="width:160px">
                                     <select name="unit_type" class="form-control form-control-sm">
-                                        @foreach(($unitTypes ?? ['M2','Buah/Seater','Durasi','Satuan']) as $ut)
-                                            <option value="{{ $ut }}" {{ ($service->unit_type ?? 'Satuan') === $ut ? 'selected' : '' }}>{{ $ut }}</option>
+                                        @foreach ($unitTypes ?? ['M2', 'Buah/Seater', 'Durasi', 'Satuan'] as $ut)
+                                            <option value="{{ $ut }}"
+                                                {{ ($service->unit_type ?? 'Satuan') === $ut ? 'selected' : '' }}>
+                                                {{ $ut }}</option>
                                         @endforeach
                                     </select>
                                 </td>
@@ -152,14 +171,17 @@
                                 </td>
                                 <td style="width:130px">
                                     <input type="number" name="duration_hours"
-                                        value="{{ max((int) ceil(($service->duration_minutes ?? 0) / 60), 0) }}" class="form-control form-control-sm"
-                                        min="1" step="1">
+                                        value="{{ max((int) ceil(($service->duration_minutes ?? 0) / 60), 0) }}"
+                                        class="form-control form-control-sm" min="1" step="1">
                                 </td>
                                 <td style="width:200px">
                                     <select name="icon" class="form-control form-control-sm">
-                                        <option value="" {{ empty($service->icon) ? 'selected' : '' }}>Default</option>
-                                        @foreach(($icons ?? ['fa-broom','fa-couch','fa-shower','fa-utensils','fa-spray-can','fa-brush','fa-soap','fa-wind','fa-snowflake']) as $ic)
-                                            <option value="{{ $ic }}" {{ ($service->icon ?? '') === $ic ? 'selected' : '' }}>{{ $ic }}</option>
+                                        <option value="" {{ empty($service->icon) ? 'selected' : '' }}>Default
+                                        </option>
+                                        @foreach ($icons ?? ['fa-broom', 'fa-couch', 'fa-shower', 'fa-utensils', 'fa-spray-can', 'fa-brush', 'fa-soap', 'fa-wind', 'fa-snowflake'] as $ic)
+                                            <option value="{{ $ic }}"
+                                                {{ ($service->icon ?? '') === $ic ? 'selected' : '' }}>{{ $ic }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </td>
@@ -211,13 +233,17 @@
         function bindUnitTypeDisable() {
             var createUnit = document.getElementById('unit_type');
             var createDuration = document.getElementById('duration_hours');
-            var toggle = function(sel, dur){ dur.disabled = sel.value !== 'Durasi'; };
+            var toggle = function(sel, dur) {
+                dur.disabled = sel.value !== 'Durasi';
+            };
             if (createUnit && createDuration) {
                 toggle(createUnit, createDuration);
-                createUnit.addEventListener('change', function(){ toggle(createUnit, createDuration); });
+                createUnit.addEventListener('change', function() {
+                    toggle(createUnit, createDuration);
+                });
             }
-            document.querySelectorAll('select[name="unit_type"]').forEach(function(s){
-                s.addEventListener('change', function(){
+            document.querySelectorAll('select[name="unit_type"]').forEach(function(s) {
+                s.addEventListener('change', function() {
                     var row = s.closest('tr');
                     var dur = row ? row.querySelector('input[name="duration_hours"]') : null;
                     if (dur) dur.disabled = s.value !== 'Durasi';
@@ -227,21 +253,26 @@
                 if (dur) dur.disabled = s.value !== 'Durasi';
             });
         }
-        function setIcon(btn){
+
+        function setIcon(btn) {
             var cell = btn.closest('td');
             var input = cell.querySelector('input[name="icon"]');
-            cell.querySelectorAll('.icon-option').forEach(function(b){ b.classList.remove('active'); });
+            cell.querySelectorAll('.icon-option').forEach(function(b) {
+                b.classList.remove('active');
+            });
             btn.classList.add('active');
             if (input) input.value = btn.getAttribute('data-value');
         }
-        document.addEventListener('DOMContentLoaded', function(){
+        document.addEventListener('DOMContentLoaded', function() {
             bindUnitTypeDisable();
-            document.querySelectorAll('.icon-picker').forEach(function(p){
+            document.querySelectorAll('.icon-picker').forEach(function(p) {
                 var target = p.getAttribute('data-target');
                 var input = document.getElementById(target);
-                p.querySelectorAll('.icon-option').forEach(function(b){
-                    b.addEventListener('click', function(){
-                        p.querySelectorAll('.icon-option').forEach(function(x){ x.classList.remove('active'); });
+                p.querySelectorAll('.icon-option').forEach(function(b) {
+                    b.addEventListener('click', function() {
+                        p.querySelectorAll('.icon-option').forEach(function(x) {
+                            x.classList.remove('active');
+                        });
                         b.classList.add('active');
                         if (input) input.value = b.getAttribute('data-value');
                     });

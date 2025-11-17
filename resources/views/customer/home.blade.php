@@ -483,9 +483,10 @@
                     @php
                         $href = route('customer.services.index', ['category' => $cat->name]);
                         $img = !empty($cat->image)
-                            ? (\Illuminate\Support\Facades\Route::has('service-categories.image')
+                            ? ((\Illuminate\Support\Facades\Route::has('service-categories.image')
                                 ? route('service-categories.image', $cat)
                                 : \Illuminate\Support\Facades\Storage::url($cat->image))
+                                . '?v=' . ((optional($cat->updated_at)->timestamp) ?? time()))
                             : null;
                         $iconClass = $cat->icon ?? ($defaultIcons[$cat->name] ?? 'fa-broom');
                     @endphp
