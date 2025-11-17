@@ -159,6 +159,7 @@ jobs:
             **/.git*
             **/.git*/**
             .github/**
+            vendor/**
             node_modules/**
             tests/**
             storage/framework/**
@@ -178,6 +179,7 @@ jobs:
           server-dir: ${{ env.REMOTE_PUBLIC_PATH }}/
           exclude: |
             .env
+            vendor/**
 
       - name: Diagnose remote after upload (key)
         if: ${{ success() && env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}

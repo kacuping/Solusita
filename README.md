@@ -49,4 +49,4 @@ Kacuping
 
 https://solusita.luasbidang.com/login
 Update Laravel 104
-ttesting ke 105
+ttesting ke 106
