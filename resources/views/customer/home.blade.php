@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
     <title>Beranda Pelanggan</title>
+    <meta name="theme-color" content="#4b88ff" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
     <!-- Font Awesome for service icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     @include('customer.partials.base-css')
@@ -547,6 +550,9 @@
             @include('customer.partials.bottom-nav')
         </div>
     </div>
+<script>
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/service-worker.js', { scope: '/customer/' }); }
+</script>
 </body>
 
 @include('customer.partials.base-js')
