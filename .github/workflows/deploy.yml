@@ -2,7 +2,7 @@ name: Deploy to Hostinger via SFTP
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -13,6 +13,7 @@ jobs:
       SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
       SFTP_PORT: ${{ secrets.SFTP_PORT }}
       SFTP_REMOTE_PATH: ${{ secrets.SFTP_REMOTE_PATH }}
+      SFTP_REMOTE_PUBLIC_PATH: ${{ secrets.SFTP_REMOTE_PUBLIC_PATH }}
       SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
@@ -63,6 +64,29 @@ jobs:
           fi
           echo "OK: Secrets minimum terpenuhi. Lanjut ke langkah upload incremental via SFTP."
 
+      - name: Compute deploy variables
+        run: |
+          set -e
+          PROTO="sftp"
+          if [ "${SFTP_PORT}" = "21" ]; then PROTO="ftp"; fi
+          echo "REMOTE_PROTOCOL=${PROTO}" >> $GITHUB_ENV
+          RP=$(printf "%s" "${SFTP_REMOTE_PATH}" | xargs)
+          RP="${RP%/}"
+          PUB=$(printf "%s" "${SFTP_REMOTE_PUBLIC_PATH}" | xargs)
+          if [ -z "${PUB}" ]; then
+            if echo "${RP}" | grep -E '/public$|/public_html$' >/dev/null; then
+              PUB="${RP}"
+            else
+              PUB="${RP}/public"
+            fi
+          fi
+          PUB="${PUB%/}"
+          echo "SFTP_REMOTE_PATH=${RP}" >> $GITHUB_ENV
+          echo "REMOTE_PUBLIC_PATH=${PUB}" >> $GITHUB_ENV
+          echo "Protocol=${PROTO}"
+          echo "Remote path=${RP}"
+          echo "Public path=${PUB}"
+
       - name: Preflight SSH (key)
         if: ${{ env.SSH_PRIVATE_KEY != '' }}
         uses: appleboy/ssh-action@v0.1.7
@@ -95,7 +119,7 @@ jobs:
         uses: pressidium/lftp-mirror-action@v1
         with:
           host: ${{ env.SFTP_SERVER }}
-          remote-protocol: 'sftp'
+          remote-protocol: ${{ env.REMOTE_PROTOCOL }}
           port: ${{ env.SFTP_PORT }}
           user: ${{ env.SFTP_USERNAME }}
           pass: ${{ env.SFTP_PASSWORD }}
@@ -113,7 +137,7 @@ jobs:
           LFTP_PASSWORD: ''
         with:
           host: ${{ env.SFTP_SERVER }}
-          remote-protocol: 'sftp'
+          remote-protocol: ${{ env.REMOTE_PROTOCOL }}
           port: ${{ env.SFTP_PORT }}
           user: ${{ env.SFTP_USERNAME }}
           # Catatan: untuk auth key-based, host harus menerima public key Anda via hPanel
@@ -131,12 +155,12 @@ jobs:
         uses: pressidium/lftp-mirror-action@v1
         with:
           host: ${{ env.SFTP_SERVER }}
-          remote-protocol: 'sftp'
+          remote-protocol: ${{ env.REMOTE_PROTOCOL }}
           port: ${{ env.SFTP_PORT }}
           user: ${{ env.SFTP_USERNAME }}
           pass: ${{ env.SFTP_PASSWORD }}
           localDir: './public'
-          remoteDir: ${{ endsWith(env.SFTP_REMOTE_PATH, '/public') && env.SFTP_REMOTE_PATH || format('{0}/public', env.SFTP_REMOTE_PATH) }}
+          remoteDir: ${{ env.REMOTE_PUBLIC_PATH }}
           reverse: true
           options: "--ignore-time --only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .env"
 
@@ -148,12 +172,12 @@ jobs:
           LFTP_PASSWORD: ''
         with:
           host: ${{ env.SFTP_SERVER }}
-          remote-protocol: 'sftp'
+          remote-protocol: ${{ env.REMOTE_PROTOCOL }}
           port: ${{ env.SFTP_PORT }}
           user: ${{ env.SFTP_USERNAME }}
           pass: ${{ env.LFTP_PASSWORD }}
           localDir: './public'
-          remoteDir: ${{ endsWith(env.SFTP_REMOTE_PATH, '/public') && env.SFTP_REMOTE_PATH || format('{0}/public', env.SFTP_REMOTE_PATH) }}
+          remoteDir: ${{ env.REMOTE_PUBLIC_PATH }}
           reverse: true
           options: "--ignore-time --only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .env"
 
