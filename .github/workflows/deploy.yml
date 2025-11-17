@@ -22,7 +22,6 @@ jobs:
       FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
       FTP_PORT: ${{ secrets.FTP_PORT }}
       FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
-      FTP_BASE_DIR: ${{ secrets.FTP_BASE_DIR }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -43,8 +42,7 @@ jobs:
           node-version: 20
 
       - name: Install Composer dependencies (prod)
-        run: |
-          composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+        run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
 
       - name: Install NPM dependencies and build assets
         run: |
@@ -55,6 +53,7 @@ jobs:
         run: |
           if [ ! -f "./public/build/manifest.json" ]; then
             echo "ERROR: Vite manifest.json tidak ditemukan di ./public/build/. Pastikan proses build sukses dan output diarahkan ke public/build."
+            ls -la ./public || true
             exit 1
           else
             echo "OK: ./public/build/manifest.json ditemukan. Lanjut ke deploy."
@@ -99,9 +98,9 @@ jobs:
           if [ -z "$FTP_USERNAME" ]; then echo "Missing GitHub Secret: FTP_USERNAME" && exit 1; fi
           if [ -z "$FTP_PASSWORD" ]; then echo "Missing GitHub Secret: FTP_PASSWORD" && exit 1; fi
           if [ -z "$FTP_SERVER_DIR" ]; then echo "Missing GitHub Secret: FTP_SERVER_DIR" && exit 1; fi
-          if [ -z "$FTP_BASE_DIR" ]; then echo "Missing GitHub Secret: FTP_BASE_DIR" && exit 1; fi
           echo "OK: FTP secrets tersedia. Lanjut ke deploy via FTP."
 
+      # Preflight SSH (key)
       - name: Preflight SSH (key)
         if: ${{ env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
         uses: appleboy/ssh-action@v0.1.7
@@ -115,6 +114,7 @@ jobs:
             echo "Remote path: ${{ env.SFTP_REMOTE_PATH }}"
             ls -la ${{ env.SFTP_REMOTE_PATH }} || true
 
+      # Preflight SSH (password)
       - name: Preflight SSH (password)
         if: ${{ env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' && env.SFTP_SERVER != '' }}
         uses: appleboy/ssh-action@v0.1.7
@@ -128,7 +128,7 @@ jobs:
             echo "Remote path: ${{ env.SFTP_REMOTE_PATH }}"
             ls -la ${{ env.SFTP_REMOTE_PATH }} || true
 
-      # Upload incremental (hanya file yang berubah) via SFTP mirror dengan password
+      # Upload incremental (hanya file yang berubah) via SFTP mirror (password)
       - name: Upload only changed files (SFTP mirror - password)
         if: ${{ env.SFTP_PASSWORD != '' && env.SFTP_SERVER != '' }}
         uses: pressidium/lftp-mirror-action@v1
@@ -144,10 +144,11 @@ jobs:
           localDir: './'
           remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
-          # Opsi mirror: hanya kirim file lebih baru, hapus file lama di server agar identik
           options: "--verbose --delete --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
 
-      # Upload incremental via SFTP mirror dengan key (fallback jika tidak memakai password)
+      # Upload incremental via SFTP mirror (key) - fallback
+      # NOTE: many lftp-based GitHub Actions are primarily password-oriented.
+      # Jika server menerima key, pastikan public key di-upload ke server (hPanel) dan action mendukung agent/key.
       - name: Upload only changed files (SFTP mirror - key)
         if: ${{ (env.SFTP_PASSWORD == '' || !env.SFTP_PASSWORD) && env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
         uses: pressidium/lftp-mirror-action@v1
@@ -157,14 +158,11 @@ jobs:
           host: ${{ env.SFTP_SERVER }}
           port: ${{ env.SFTP_PORT }}
           user: ${{ env.SFTP_USERNAME }}
+          pass: ${{ env.LFTP_PASSWORD }}
           settings: 'sftp:auto-confirm=yes'
           onlyNewer: true
           restoreMTime: true
           parallel: 3
-          # Catatan: untuk auth key-based, host harus menerima public key Anda via hPanel
-          # Action ini terutama untuk password, sehingga disarankan mengisi SFTP_PASSWORD.
-          # Jika host mendukung key-agent, Anda dapat menggunakan konfigurasi server.
-          pass: ${{ env.LFTP_PASSWORD }}
           localDir: './'
           remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
@@ -238,7 +236,7 @@ jobs:
             echo "Public listing:"
             ls -la ${{ env.REMOTE_PUBLIC_PATH }} | head -n 200 || true
 
-      - name: Run post-deploy commands on server (Composer, cache, migrate)
+      - name: Run post-deploy commands on server (Composer, cache, migrate) [key]
         if: ${{ success() && env.SSH_PRIVATE_KEY != '' }}
         uses: appleboy/ssh-action@v0.1.7
         with:
@@ -281,26 +279,6 @@ jobs:
             php artisan view:clear || true
             php artisan storage:link || true
             php artisan migrate --force || true
-      - name: Upload root app via FTP (SamKirkland)
-        if: ${{ env.FTP_SERVER != '' }}
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: ${{ env.FTP_SERVER }}
-          username: ${{ env.FTP_USERNAME }}
-          password: ${{ env.FTP_PASSWORD }}
-          protocol: ftp
-          port: ${{ env.FTP_PORT }}
-          local-dir: ./
-          server-dir: ${{ endsWith(env.FTP_BASE_DIR, '/') && env.FTP_BASE_DIR || format('{0}/', env.FTP_BASE_DIR) }}
-          exclude: |
-            **/public/**
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            tests/**
-            storage/framework/**
-            storage/logs/**
-            .env
 
       - name: Upload public directory via FTP (SamKirkland)
         if: ${{ env.FTP_SERVER != '' }}
@@ -312,7 +290,7 @@ jobs:
           protocol: ftp
           port: ${{ env.FTP_PORT }}
           local-dir: ./public/
-          server-dir: ${{ endsWith(env.FTP_SERVER_DIR, '/') && env.FTP_SERVER_DIR || format('{0}/', env.FTP_SERVER_DIR) }}
+          server-dir: ${{ env.FTP_SERVER_DIR }}
           exclude: |
             **/.git*
             **/.git*/**
