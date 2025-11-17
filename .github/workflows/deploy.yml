@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -119,11 +121,14 @@ jobs:
           user: ${{ env.SFTP_USERNAME }}
           pass: ${{ env.SFTP_PASSWORD }}
           settings: 'sftp:auto-confirm=yes'
+          onlyNewer: true
+          restoreMTime: true
+          parallel: 3
           localDir: './'
           remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
           # Opsi mirror: hanya kirim file lebih baru, hapus file lama di server agar identik
-          options: "--ignore-time --only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
+          options: "--verbose --delete --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
 
       # Upload incremental via SFTP mirror dengan key (fallback jika tidak memakai password)
       - name: Upload only changed files (SFTP mirror - key)
@@ -136,6 +141,9 @@ jobs:
           port: ${{ env.SFTP_PORT }}
           user: ${{ env.SFTP_USERNAME }}
           settings: 'sftp:auto-confirm=yes'
+          onlyNewer: true
+          restoreMTime: true
+          parallel: 3
           # Catatan: untuk auth key-based, host harus menerima public key Anda via hPanel
           # Action ini terutama untuk password, sehingga disarankan mengisi SFTP_PASSWORD.
           # Jika host mendukung key-agent, Anda dapat menggunakan konfigurasi server.
@@ -143,7 +151,7 @@ jobs:
           localDir: './'
           remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
-          options: "--ignore-time --only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
+          options: "--verbose --delete --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
 
       # Upload folder public secara terpisah (password)
       - name: Upload public directory (SFTP mirror - password)
@@ -155,10 +163,13 @@ jobs:
           user: ${{ env.SFTP_USERNAME }}
           pass: ${{ env.SFTP_PASSWORD }}
           settings: 'sftp:auto-confirm=yes'
+          onlyNewer: true
+          restoreMTime: true
+          parallel: 3
           localDir: './public'
           remoteDir: ${{ env.REMOTE_PUBLIC_PATH }}
           reverse: true
-          options: "--ignore-time --only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .env"
+          options: "--verbose --delete --no-empty-dirs --exclude-glob .env"
 
       # Upload folder public secara terpisah (key)
       - name: Upload public directory (SFTP mirror - key)
@@ -172,10 +183,13 @@ jobs:
           user: ${{ env.SFTP_USERNAME }}
           pass: ${{ env.LFTP_PASSWORD }}
           settings: 'sftp:auto-confirm=yes'
+          onlyNewer: true
+          restoreMTime: true
+          parallel: 3
           localDir: './public'
           remoteDir: ${{ env.REMOTE_PUBLIC_PATH }}
           reverse: true
-          options: "--ignore-time --only-newer --verbose --parallel=3 --no-empty-dirs --exclude-glob .env"
+          options: "--verbose --delete --no-empty-dirs --exclude-glob .env"
 
       - name: Diagnose remote after upload (key)
         if: ${{ success() && env.SSH_PRIVATE_KEY != '' }}
@@ -190,7 +204,7 @@ jobs:
             echo "Root listing:"
             ls -la ${{ env.SFTP_REMOTE_PATH }} | head -n 200 || true
             echo "Public listing:"
-            ls -la ${{ endsWith(env.SFTP_REMOTE_PATH, '/public') && env.SFTP_REMOTE_PATH || format('{0}/public', env.SFTP_REMOTE_PATH) }} | head -n 200 || true
+            ls -la ${{ env.REMOTE_PUBLIC_PATH }} | head -n 200 || true
 
       - name: Diagnose remote after upload (password)
         if: ${{ success() && env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' }}
@@ -205,7 +219,7 @@ jobs:
             echo "Root listing:"
             ls -la ${{ env.SFTP_REMOTE_PATH }} | head -n 200 || true
             echo "Public listing:"
-            ls -la ${{ endsWith(env.SFTP_REMOTE_PATH, '/public') && env.SFTP_REMOTE_PATH || format('{0}/public', env.SFTP_REMOTE_PATH) }} | head -n 200 || true
+            ls -la ${{ env.REMOTE_PUBLIC_PATH }} | head -n 200 || true
 
       - name: Run post-deploy commands on server (Composer, cache, migrate)
         if: ${{ success() && env.SSH_PRIVATE_KEY != '' }}
