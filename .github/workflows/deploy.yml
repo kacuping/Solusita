@@ -8,6 +8,13 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      SFTP_SERVER: ${{ secrets.SFTP_SERVER }}
+      SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
+      SFTP_PORT: ${{ secrets.SFTP_PORT }}
+      SFTP_REMOTE_PATH: ${{ secrets.SFTP_REMOTE_PATH }}
+      SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -41,12 +48,11 @@ jobs:
 
       - name: Validate SFTP/SSH secrets presence
         run: |
-          if [ -z "${{ secrets.SFTP_SERVER }}" ]; then echo "Missing GitHub Secret: SFTP_SERVER" && exit 1; fi
-          if [ -z "${{ secrets.SFTP_USERNAME }}" ]; then echo "Missing GitHub Secret: SFTP_USERNAME" && exit 1; fi
-          if [ -z "${{ secrets.SFTP_PORT }}" ]; then echo "Missing GitHub Secret: SFTP_PORT" && exit 1; fi
-          if [ -z "${{ secrets.SFTP_REMOTE_PATH }}" ]; then echo "Missing GitHub Secret: SFTP_REMOTE_PATH" && exit 1; fi
-          # Minimal auth requirement: either SFTP_PASSWORD (password-based) OR SSH_PRIVATE_KEY (key-based)
-          if [ -z "${{ secrets.SFTP_PASSWORD }}" ] && [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+          if [ -z "$SFTP_SERVER" ]; then echo "Missing GitHub Secret: SFTP_SERVER" && exit 1; fi
+          if [ -z "$SFTP_USERNAME" ]; then echo "Missing GitHub Secret: SFTP_USERNAME" && exit 1; fi
+          if [ -z "$SFTP_PORT" ]; then echo "Missing GitHub Secret: SFTP_PORT" && exit 1; fi
+          if [ -z "$SFTP_REMOTE_PATH" ]; then echo "Missing GitHub Secret: SFTP_REMOTE_PATH" && exit 1; fi
+          if [ -z "$SFTP_PASSWORD" ] && [ -z "$SSH_PRIVATE_KEY" ]; then
             echo "Missing authentication: isi salah satu GitHub Secret: SFTP_PASSWORD atau SSH_PRIVATE_KEY"
             exit 1
           fi
@@ -54,51 +60,51 @@ jobs:
 
       # Upload incremental (hanya file yang berubah) via SFTP mirror dengan password
       - name: Upload only changed files (SFTP mirror - password)
-        if: ${{ secrets.SFTP_PASSWORD != '' }}
+        if: ${{ env.SFTP_PASSWORD != '' }}
         uses: pressidium/lftp-mirror-action@v1
         with:
-          host: ${{ secrets.SFTP_SERVER }}
+          host: ${{ env.SFTP_SERVER }}
           remote-protocol: 'sftp'
-          port: ${{ secrets.SFTP_PORT }}
-          user: ${{ secrets.SFTP_USERNAME }}
-          pass: ${{ secrets.SFTP_PASSWORD }}
+          port: ${{ env.SFTP_PORT }}
+          user: ${{ env.SFTP_USERNAME }}
+          pass: ${{ env.SFTP_PASSWORD }}
           localDir: './'
-          remoteDir: ${{ secrets.SFTP_REMOTE_PATH }}
+          remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
           # Opsi mirror: hanya kirim file lebih baru, hapus file lama di server agar identik
           options: "--delete --only-newer --verbose --exclude-glob .git --exclude-glob node_modules --exclude-glob storage/framework --exclude-glob storage/logs --exclude-glob .env"
 
       # Upload incremental via SFTP mirror dengan key (fallback jika tidak memakai password)
       - name: Upload only changed files (SFTP mirror - key)
-        if: ${{ (secrets.SFTP_PASSWORD == '' || !secrets.SFTP_PASSWORD) && secrets.SSH_PRIVATE_KEY != '' }}
+        if: ${{ (env.SFTP_PASSWORD == '' || !env.SFTP_PASSWORD) && env.SSH_PRIVATE_KEY != '' }}
         uses: pressidium/lftp-mirror-action@v1
         env:
           LFTP_PASSWORD: ''
         with:
-          host: ${{ secrets.SFTP_SERVER }}
+          host: ${{ env.SFTP_SERVER }}
           remote-protocol: 'sftp'
-          port: ${{ secrets.SFTP_PORT }}
-          user: ${{ secrets.SFTP_USERNAME }}
+          port: ${{ env.SFTP_PORT }}
+          user: ${{ env.SFTP_USERNAME }}
           # Catatan: untuk auth key-based, host harus menerima public key Anda via hPanel
           # Action ini terutama untuk password, sehingga disarankan mengisi SFTP_PASSWORD.
           # Jika host mendukung key-agent, Anda dapat menggunakan konfigurasi server.
           pass: ${{ env.LFTP_PASSWORD }}
           localDir: './'
-          remoteDir: ${{ secrets.SFTP_REMOTE_PATH }}
+          remoteDir: ${{ env.SFTP_REMOTE_PATH }}
           reverse: true
           options: "--delete --only-newer --verbose --exclude-glob .git --exclude-glob node_modules --exclude-glob storage/framework --exclude-glob storage/logs --exclude-glob .env"
 
       - name: Run post-deploy commands on server (Composer, cache, migrate)
-        if: ${{ success() && secrets.SSH_PRIVATE_KEY != '' }}
+        if: ${{ success() && env.SSH_PRIVATE_KEY != '' }}
         uses: appleboy/ssh-action@v0.1.7
         with:
-          host: ${{ secrets.SFTP_SERVER }}
-          username: ${{ secrets.SFTP_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SFTP_PORT }}
+          host: ${{ env.SFTP_SERVER }}
+          username: ${{ env.SFTP_USERNAME }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          port: ${{ env.SFTP_PORT }}
           script: |
             set -e
-            cd ${{ secrets.SFTP_REMOTE_PATH }}
+            cd ${{ env.SFTP_REMOTE_PATH }}
             if command -v composer >/dev/null 2>&1; then
               composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader || true
             else
