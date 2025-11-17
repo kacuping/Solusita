@@ -70,9 +70,9 @@ jobs:
             echo "Missing authentication: isi salah satu GitHub Secret: SFTP_PASSWORD atau SSH_PRIVATE_KEY"
             exit 1
           fi
-          echo "OK: Secrets minimum terpenuhi. Lanjut ke langkah upload incremental via SFTP."
+          echo "OK: Secrets minimum untuk SFTP terpenuhi."
 
-      - name: Compute deploy variables
+      - name: Compute deploy variables (SFTP public path)
         if: ${{ env.SFTP_SERVER != '' }}
         run: |
           set -e
@@ -98,7 +98,21 @@ jobs:
           if [ -z "$FTP_USERNAME" ]; then echo "Missing GitHub Secret: FTP_USERNAME" && exit 1; fi
           if [ -z "$FTP_PASSWORD" ]; then echo "Missing GitHub Secret: FTP_PASSWORD" && exit 1; fi
           if [ -z "$FTP_SERVER_DIR" ]; then echo "Missing GitHub Secret: FTP_SERVER_DIR" && exit 1; fi
-          echo "OK: FTP secrets tersedia. Lanjut ke deploy via FTP."
+          echo "OK: FTP secrets tersedia."
+
+      # Normalize FTP_SERVER_DIR to always end with a slash and export
+      - name: Normalize FTP server-dir (ensure trailing slash)
+        if: ${{ env.FTP_SERVER != '' }}
+        run: |
+          if [ -z "$FTP_SERVER_DIR" ]; then
+            echo "FTP_SERVER_DIR_SLASH=/" >> $GITHUB_ENV
+            echo "Note: FTP_SERVER_DIR kosong, default ke /"
+          else
+            # remove trailing slashes then add one
+            DIR="${FTP_SERVER_DIR%/}/"
+            echo "FTP_SERVER_DIR_SLASH=${DIR}" >> $GITHUB_ENV
+            echo "Normalized FTP_SERVER_DIR -> ${DIR}"
+          fi
 
       # Preflight SSH (key)
       - name: Preflight SSH (key)
@@ -146,29 +160,7 @@ jobs:
           reverse: true
           options: "--verbose --delete --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
 
-      # Upload incremental via SFTP mirror (key) - fallback
-      # NOTE: many lftp-based GitHub Actions are primarily password-oriented.
-      # Jika server menerima key, pastikan public key di-upload ke server (hPanel) dan action mendukung agent/key.
-      - name: Upload only changed files (SFTP mirror - key)
-        if: ${{ (env.SFTP_PASSWORD == '' || !env.SFTP_PASSWORD) && env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
-        uses: pressidium/lftp-mirror-action@v1
-        env:
-          LFTP_PASSWORD: ''
-        with:
-          host: ${{ env.SFTP_SERVER }}
-          port: ${{ env.SFTP_PORT }}
-          user: ${{ env.SFTP_USERNAME }}
-          pass: ${{ env.LFTP_PASSWORD }}
-          settings: 'sftp:auto-confirm=yes'
-          onlyNewer: true
-          restoreMTime: true
-          parallel: 3
-          localDir: './'
-          remoteDir: ${{ env.SFTP_REMOTE_PATH }}
-          reverse: true
-          options: "--verbose --delete --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
-
-      # Upload folder public secara terpisah (password)
+      # Upload public directory separately (SFTP mirror - password)
       - name: Upload public directory (SFTP mirror - password)
         if: ${{ env.SFTP_PASSWORD != '' && env.SFTP_SERVER != '' }}
         uses: pressidium/lftp-mirror-action@v1
@@ -186,26 +178,6 @@ jobs:
           reverse: true
           options: "--verbose --delete --no-empty-dirs --exclude-glob .env"
 
-      # Upload folder public secara terpisah (key)
-      - name: Upload public directory (SFTP mirror - key)
-        if: ${{ (env.SFTP_PASSWORD == '' || !env.SFTP_PASSWORD) && env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
-        uses: pressidium/lftp-mirror-action@v1
-        env:
-          LFTP_PASSWORD: ''
-        with:
-          host: ${{ env.SFTP_SERVER }}
-          port: ${{ env.SFTP_PORT }}
-          user: ${{ env.SFTP_USERNAME }}
-          pass: ${{ env.LFTP_PASSWORD }}
-          settings: 'sftp:auto-confirm=yes'
-          onlyNewer: true
-          restoreMTime: true
-          parallel: 3
-          localDir: './public'
-          remoteDir: ${{ env.REMOTE_PUBLIC_PATH }}
-          reverse: true
-          options: "--verbose --delete --no-empty-dirs --exclude-glob .env"
-
       - name: Diagnose remote after upload (key)
         if: ${{ success() && env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
         uses: appleboy/ssh-action@v0.1.7
@@ -213,21 +185,6 @@ jobs:
           host: ${{ env.SFTP_SERVER }}
           username: ${{ env.SFTP_USERNAME }}
           key: ${{ env.SSH_PRIVATE_KEY }}
-          port: ${{ env.SFTP_PORT }}
-          script: |
-            set -e
-            echo "Root listing:"
-            ls -la ${{ env.SFTP_REMOTE_PATH }} | head -n 200 || true
-            echo "Public listing:"
-            ls -la ${{ env.REMOTE_PUBLIC_PATH }} | head -n 200 || true
-
-      - name: Diagnose remote after upload (password)
-        if: ${{ success() && env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' && env.SFTP_SERVER != '' }}
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ env.SFTP_SERVER }}
-          username: ${{ env.SFTP_USERNAME }}
-          password: ${{ env.SSH_PASSWORD }}
           port: ${{ env.SFTP_PORT }}
           script: |
             set -e
@@ -257,29 +214,7 @@ jobs:
             php artisan migrate --force || true
             php artisan db:seed --force || true
 
-      - name: Run post-deploy commands on server (password SSH)
-        if: ${{ success() && env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' }}
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ env.SFTP_SERVER }}
-          username: ${{ env.SFTP_USERNAME }}
-          password: ${{ env.SSH_PASSWORD }}
-          port: ${{ env.SFTP_PORT }}
-          script: |
-            set -e
-            cd ${{ env.SFTP_REMOTE_PATH }}
-            if command -v composer >/dev/null 2>&1; then
-              composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader || true
-            else
-              echo "Composer tidak ditemukan di server. Jalankan manual: 'composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader'" || true
-            fi
-            php artisan config:clear || true
-            php artisan cache:clear || true
-            php artisan route:clear || true
-            php artisan view:clear || true
-            php artisan storage:link || true
-            php artisan migrate --force || true
-
+      # FTP fallback: Upload public directory via FTP (SamKirkland)
       - name: Upload public directory via FTP (SamKirkland)
         if: ${{ env.FTP_SERVER != '' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
@@ -290,7 +225,7 @@ jobs:
           protocol: ftp
           port: ${{ env.FTP_PORT }}
           local-dir: ./public/
-          server-dir: ${{ env.FTP_SERVER_DIR }}
+          server-dir: ${{ env.FTP_SERVER_DIR_SLASH }}
           exclude: |
             **/.git*
             **/.git*/**
