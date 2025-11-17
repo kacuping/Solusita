@@ -438,6 +438,11 @@
         </div>
     </div>
 
+    <form method="POST" action="{{ route('customer.logout') }}" style="position:fixed;right:16px;bottom:90px;z-index:50;">
+        @csrf
+        <button class="btn save" style="background:#e45858;color:#fff;">Logout</button>
+    </form>
+
     <script>
         // Popover avatar: tampilkan tombol "Ubah" saja
         const avatar = document.querySelector('.avatar');
