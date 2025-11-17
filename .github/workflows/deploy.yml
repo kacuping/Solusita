@@ -60,6 +60,7 @@ jobs:
           fi
 
       - name: Validate SFTP/SSH secrets presence
+        if: ${{ env.SFTP_SERVER != '' }}
         run: |
           if [ -z "$SFTP_SERVER" ]; then echo "Missing GitHub Secret: SFTP_SERVER" && exit 1; fi
           if [ -z "$SFTP_USERNAME" ]; then echo "Missing GitHub Secret: SFTP_USERNAME" && exit 1; fi
@@ -72,6 +73,7 @@ jobs:
           echo "OK: Secrets minimum terpenuhi. Lanjut ke langkah upload incremental via SFTP."
 
       - name: Compute deploy variables
+        if: ${{ env.SFTP_SERVER != '' }}
         run: |
           set -e
           RP=$(printf "%s" "${SFTP_REMOTE_PATH}" | xargs)
@@ -99,7 +101,7 @@ jobs:
           echo "OK: FTP secrets tersedia. Lanjut ke deploy via FTP."
 
       - name: Preflight SSH (key)
-        if: ${{ env.SSH_PRIVATE_KEY != '' }}
+        if: ${{ env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ env.SFTP_SERVER }}
@@ -112,7 +114,7 @@ jobs:
             ls -la ${{ env.SFTP_REMOTE_PATH }} || true
 
       - name: Preflight SSH (password)
-        if: ${{ env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' }}
+        if: ${{ env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' && env.SFTP_SERVER != '' }}
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ env.SFTP_SERVER }}
@@ -126,7 +128,7 @@ jobs:
 
       # Upload incremental (hanya file yang berubah) via SFTP mirror dengan password
       - name: Upload only changed files (SFTP mirror - password)
-        if: ${{ env.SFTP_PASSWORD != '' }}
+        if: ${{ env.SFTP_PASSWORD != '' && env.SFTP_SERVER != '' }}
         uses: pressidium/lftp-mirror-action@v1
         with:
           host: ${{ env.SFTP_SERVER }}
@@ -145,7 +147,7 @@ jobs:
 
       # Upload incremental via SFTP mirror dengan key (fallback jika tidak memakai password)
       - name: Upload only changed files (SFTP mirror - key)
-        if: ${{ (env.SFTP_PASSWORD == '' || !env.SFTP_PASSWORD) && env.SSH_PRIVATE_KEY != '' }}
+        if: ${{ (env.SFTP_PASSWORD == '' || !env.SFTP_PASSWORD) && env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
         uses: pressidium/lftp-mirror-action@v1
         env:
           LFTP_PASSWORD: ''
@@ -168,7 +170,7 @@ jobs:
 
       # Upload folder public secara terpisah (password)
       - name: Upload public directory (SFTP mirror - password)
-        if: ${{ env.SFTP_PASSWORD != '' }}
+        if: ${{ env.SFTP_PASSWORD != '' && env.SFTP_SERVER != '' }}
         uses: pressidium/lftp-mirror-action@v1
         with:
           host: ${{ env.SFTP_SERVER }}
@@ -186,7 +188,7 @@ jobs:
 
       # Upload folder public secara terpisah (key)
       - name: Upload public directory (SFTP mirror - key)
-        if: ${{ (env.SFTP_PASSWORD == '' || !env.SFTP_PASSWORD) && env.SSH_PRIVATE_KEY != '' }}
+        if: ${{ (env.SFTP_PASSWORD == '' || !env.SFTP_PASSWORD) && env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
         uses: pressidium/lftp-mirror-action@v1
         env:
           LFTP_PASSWORD: ''
@@ -205,7 +207,7 @@ jobs:
           options: "--verbose --delete --no-empty-dirs --exclude-glob .env"
 
       - name: Diagnose remote after upload (key)
-        if: ${{ success() && env.SSH_PRIVATE_KEY != '' }}
+        if: ${{ success() && env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ env.SFTP_SERVER }}
@@ -220,7 +222,7 @@ jobs:
             ls -la ${{ env.REMOTE_PUBLIC_PATH }} | head -n 200 || true
 
       - name: Diagnose remote after upload (password)
-        if: ${{ success() && env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' }}
+        if: ${{ success() && env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' && env.SFTP_SERVER != '' }}
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ env.SFTP_SERVER }}
