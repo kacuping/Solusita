@@ -15,6 +15,7 @@ jobs:
       SFTP_REMOTE_PATH: ${{ secrets.SFTP_REMOTE_PATH }}
       SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
       SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -150,3 +151,26 @@ jobs:
             php artisan cache:clear || true
             php artisan migrate --force || true
             php artisan db:seed --force || true
+
+      - name: Run post-deploy commands on server (password SSH)
+        if: ${{ success() && env.SSH_PRIVATE_KEY == '' && env.SSH_PASSWORD != '' }}
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ env.SFTP_SERVER }}
+          username: ${{ env.SFTP_USERNAME }}
+          password: ${{ env.SSH_PASSWORD }}
+          port: ${{ env.SFTP_PORT }}
+          script: |
+            set -e
+            cd ${{ env.SFTP_REMOTE_PATH }}
+            if command -v composer >/dev/null 2>&1; then
+              composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader || true
+            else
+              echo "Composer tidak ditemukan di server. Jalankan manual: 'composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader'" || true
+            fi
+            php artisan config:clear || true
+            php artisan cache:clear || true
+            php artisan route:clear || true
+            php artisan view:clear || true
+            php artisan storage:link || true
+            php artisan migrate --force || true
