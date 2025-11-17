@@ -373,6 +373,12 @@ Route::prefix('customer')->group(function () {
 
             return view('customer.schedule', compact('bookings', 'customer'));
         })->name('customer.schedule');
+        Route::post('/logout', function (\Illuminate\Http\Request $request) {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('customer.login');
+        })->name('customer.logout');
         // Simple JSON notifications endpoint for polling
         Route::get('/notifications', function () {
             $user = auth()->user();
