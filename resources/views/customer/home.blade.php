@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
     <title>Beranda Pelanggan</title>
     <meta name="theme-color" content="#4b88ff" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="manifest" href="/manifest.webmanifest?v={{ time() }}" />
     <link rel="apple-touch-icon" href="/icons/pic.png" />
     <!-- Font Awesome for service icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
@@ -486,10 +486,11 @@
                     @php
                         $href = route('customer.services.index', ['category' => $cat->name]);
                         $img = !empty($cat->image)
-                            ? ((\Illuminate\Support\Facades\Route::has('service-categories.image')
-                                ? route('service-categories.image', $cat)
-                                : \Illuminate\Support\Facades\Storage::url($cat->image))
-                                . '?v=' . ((optional($cat->updated_at)->timestamp) ?? time()))
+                            ? (\Illuminate\Support\Facades\Route::has('service-categories.image')
+                                    ? route('service-categories.image', $cat)
+                                    : \Illuminate\Support\Facades\Storage::url($cat->image)) .
+                                '?v=' .
+                                (optional($cat->updated_at)->timestamp ?? time())
                             : null;
                         $iconClass = $cat->icon ?? ($defaultIcons[$cat->name] ?? 'fa-broom');
                     @endphp
@@ -550,9 +551,13 @@
             @include('customer.partials.bottom-nav')
         </div>
     </div>
-<script>
-  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/service-worker.js', { scope: '/customer/' }); }
-</script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js', {
+                scope: '/customer/'
+            });
+        }
+    </script>
 </body>
 
 @include('customer.partials.base-js')

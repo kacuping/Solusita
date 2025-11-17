@@ -1,0 +1,28 @@
+{
+  "name": "Solusita",
+  "short_name": "Solusita",
+  "description": "Solusita: pemesanan layanan kebersihan, jadwal, dan pembayaran pelanggan.",
+  "lang": "id",
+  "dir": "ltr",
+  "orientation": "portrait",
+  "start_url": "/customer/home",
+  "scope": "/customer/",
+  "display": "standalone",
+  "background_color": "#f2f6ff",
+  "theme_color": "#4b88ff",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/pic.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/pic.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
