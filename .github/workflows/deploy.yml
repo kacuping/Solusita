@@ -142,41 +142,42 @@ jobs:
             echo "Remote path: ${{ env.SFTP_REMOTE_PATH }}"
             ls -la ${{ env.SFTP_REMOTE_PATH }} || true
 
-      # Upload incremental (hanya file yang berubah) via SFTP mirror (password)
-      - name: Upload only changed files (SFTP mirror - password)
+      # Upload incremental via SFTP using SamKirkland (hash-based, benar-benar hanya file berubah)
+      - name: Upload only changed files (SFTP - root)
         if: ${{ env.SFTP_PASSWORD != '' && env.SFTP_SERVER != '' }}
-        uses: pressidium/lftp-mirror-action@v1
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          host: ${{ env.SFTP_SERVER }}
+          server: ${{ env.SFTP_SERVER }}
+          username: ${{ env.SFTP_USERNAME }}
+          password: ${{ env.SFTP_PASSWORD }}
+          protocol: sftp
           port: ${{ env.SFTP_PORT }}
-          user: ${{ env.SFTP_USERNAME }}
-          pass: ${{ env.SFTP_PASSWORD }}
-          settings: 'sftp:auto-confirm=yes'
-          onlyNewer: true
-          restoreMTime: true
-          parallel: 3
-          localDir: './'
-          remoteDir: ${{ env.SFTP_REMOTE_PATH }}
-          reverse: true
-          options: "--verbose --delete --no-empty-dirs --exclude-glob public/** --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob tests/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
+          local-dir: ./
+          server-dir: ${{ env.SFTP_REMOTE_PATH }}/
+          exclude: |
+            public/**
+            **/.git*
+            **/.git*/**
+            .github/**
+            node_modules/**
+            tests/**
+            storage/framework/**
+            storage/logs/**
+            .env
 
-      # Upload public directory separately (SFTP mirror - password)
-      - name: Upload public directory (SFTP mirror - password)
+      - name: Upload public directory (SFTP - public)
         if: ${{ env.SFTP_PASSWORD != '' && env.SFTP_SERVER != '' }}
-        uses: pressidium/lftp-mirror-action@v1
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
-          host: ${{ env.SFTP_SERVER }}
+          server: ${{ env.SFTP_SERVER }}
+          username: ${{ env.SFTP_USERNAME }}
+          password: ${{ env.SFTP_PASSWORD }}
+          protocol: sftp
           port: ${{ env.SFTP_PORT }}
-          user: ${{ env.SFTP_USERNAME }}
-          pass: ${{ env.SFTP_PASSWORD }}
-          settings: 'sftp:auto-confirm=yes'
-          onlyNewer: true
-          restoreMTime: true
-          parallel: 3
-          localDir: './public'
-          remoteDir: ${{ env.REMOTE_PUBLIC_PATH }}
-          reverse: true
-          options: "--verbose --delete --no-empty-dirs --exclude-glob .env"
+          local-dir: ./public/
+          server-dir: ${{ env.REMOTE_PUBLIC_PATH }}/
+          exclude: |
+            .env
 
       - name: Diagnose remote after upload (key)
         if: ${{ success() && env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
