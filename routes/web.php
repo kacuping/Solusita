@@ -115,11 +115,19 @@ Route::prefix('customer')->group(function () {
                 }
             }
 
-            $file = storage_path('app/payment_options.json');
             $paymentOptions = [];
-            if (file_exists($file)) {
-                $json = file_get_contents($file);
-                $paymentOptions = json_decode($json, true) ?: [];
+            foreach ([
+                storage_path('app/payment_options.json'),
+                public_path('payment_options.json'),
+                public_path('storage/payment_options.json'),
+            ] as $pfile) {
+                if (file_exists($pfile)) {
+                    $json = file_get_contents($pfile);
+                    $paymentOptions = json_decode($json, true) ?: [];
+                    if (! empty($paymentOptions)) {
+                        break;
+                    }
+                }
             }
             $cashActive = session('cash_active', true);
 
@@ -256,9 +264,7 @@ Route::prefix('customer')->group(function () {
                 'promotion_code' => $validated['promotion_code'] ?? null,
             ]);
 
-            // Append detail order ke notes: metode, unit/qty/ukuran, dan nomor order
             $info = [];
-            // Tulis label manusia untuk metode pembayaran dan simpan key mentah untuk fallback
             $pmRaw = (string) $validated['payment_method'];
             $pmLabel = null;
             if ($pmRaw === 'cash') {
@@ -305,7 +311,6 @@ Route::prefix('customer')->group(function () {
             $method = (string) $request->query('method', '');
             if ($method === '') {
                 $n = (string) ($booking->notes ?? '');
-                // Prefer PaymentKey jika tersedia
                 if (preg_match('/PaymentKey\s*:\s*(cash|option_[a-z0-9-]+)/i', $n, $m)) {
                     $method = strtolower($m[1]);
                 } elseif (preg_match('/Metode Pembayaran:\s*(cash|option_[a-z0-9-]+)/i', $n, $m)) {
@@ -549,12 +554,19 @@ Route::middleware('auth')->group(function () {
         $bookings = $query->paginate(15)->withQueryString();
         $cleaners = \App\Models\Cleaner::where('active', true)->orderBy('full_name')->get();
 
-        // Load payment options to map option_<id> into human-readable labels
-        $file = storage_path('app/payment_options.json');
         $paymentOptions = [];
-        if (file_exists($file)) {
-            $json = file_get_contents($file);
-            $paymentOptions = json_decode($json, true) ?: [];
+        foreach ([
+            storage_path('app/payment_options.json'),
+            public_path('payment_options.json'),
+            public_path('storage/payment_options.json'),
+        ] as $pfile) {
+            if (file_exists($pfile)) {
+                $json = file_get_contents($pfile);
+                $paymentOptions = json_decode($json, true) ?: [];
+                if (! empty($paymentOptions)) {
+                    break;
+                }
+            }
         }
 
         $assistantNames = [];
@@ -573,7 +585,6 @@ Route::middleware('auth')->group(function () {
                     $assistantNames[$b->id] = $names;
                 }
             }
-            // Ambil PaymentKey terlebih dahulu jika ada, fallback ke Metode Pembayaran
             $raw = null;
             if ($notes !== '' && preg_match('/PaymentKey\s*:\s*([^|]+)/i', $notes, $mmk)) {
                 $raw = strtolower(trim((string) $mmk[1]));
