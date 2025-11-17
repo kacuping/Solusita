@@ -7,7 +7,7 @@
     <title>Beranda Pelanggan</title>
     <meta name="theme-color" content="#4b88ff" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+    <link rel="apple-touch-icon" href="/icons/pic.png" />
     <!-- Font Awesome for service icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
     @include('customer.partials.base-css')

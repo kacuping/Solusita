@@ -7,8 +7,7 @@ self.addEventListener('install', (event) => {
     caches.open(STATIC_CACHE).then((cache) => {
       return cache.addAll([
         '/manifest.webmanifest',
-        '/icons/icon-192.svg',
-        '/icons/icon-512.svg'
+        '/icons/pic.png'
       ]);
     })
   );
