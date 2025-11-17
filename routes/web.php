@@ -36,6 +36,45 @@ Route::get('/dashboard', function () {
     return redirect()->route('dashboard');
 });
 
+Route::get('/icons/pwa/{size}.png', function ($size) {
+    $size = (int) $size;
+    if (! in_array($size, [192, 512], true)) {
+        abort(404);
+    }
+    $src = public_path('icons/pic.png');
+    if (! file_exists($src)) {
+        abort(404);
+    }
+    $img = @imagecreatefrompng($src);
+    if ($img === false) {
+        $img = @imagecreatefromjpeg($src);
+        if ($img === false) {
+            abort(404);
+        }
+    }
+    $w = imagesx($img);
+    $h = imagesy($img);
+    $canvas = imagecreatetruecolor($size, $size);
+    imagesavealpha($canvas, true);
+    $alpha = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+    imagefill($canvas, 0, 0, $alpha);
+    $scale = min($size / max($w, 1), $size / max($h, 1));
+    $nw = (int) max(1, round($w * $scale));
+    $nh = (int) max(1, round($h * $scale));
+    $dx = (int) floor(($size - $nw) / 2);
+    $dy = (int) floor(($size - $nh) / 2);
+    imagecopyresampled($canvas, $img, $dx, $dy, 0, 0, $nw, $nh, $w, $h);
+    ob_start();
+    imagepng($canvas);
+    $data = ob_get_clean();
+    imagedestroy($canvas);
+    imagedestroy($img);
+    return response($data, 200, [
+        'Content-Type' => 'image/png',
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+});
+
 // Halaman login & registrasi khusus pelanggan (mobile-friendly)
 Route::prefix('customer')->group(function () {
     Route::get('/login', [CustomerAuthController::class, 'create'])->middleware('guest')->name('customer.login');
