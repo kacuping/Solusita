@@ -22,6 +22,7 @@ jobs:
       FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
       FTP_PORT: ${{ secrets.FTP_PORT }}
       FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
+      FTP_BASE_DIR: ${{ secrets.FTP_BASE_DIR }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -98,6 +99,7 @@ jobs:
           if [ -z "$FTP_USERNAME" ]; then echo "Missing GitHub Secret: FTP_USERNAME" && exit 1; fi
           if [ -z "$FTP_PASSWORD" ]; then echo "Missing GitHub Secret: FTP_PASSWORD" && exit 1; fi
           if [ -z "$FTP_SERVER_DIR" ]; then echo "Missing GitHub Secret: FTP_SERVER_DIR" && exit 1; fi
+          if [ -z "$FTP_BASE_DIR" ]; then echo "Missing GitHub Secret: FTP_BASE_DIR" && exit 1; fi
           echo "OK: FTP secrets tersedia. Lanjut ke deploy via FTP."
 
       - name: Preflight SSH (key)
@@ -279,6 +281,27 @@ jobs:
             php artisan view:clear || true
             php artisan storage:link || true
             php artisan migrate --force || true
+      - name: Upload root app via FTP (SamKirkland)
+        if: ${{ env.FTP_SERVER != '' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ env.FTP_SERVER }}
+          username: ${{ env.FTP_USERNAME }}
+          password: ${{ env.FTP_PASSWORD }}
+          protocol: ftp
+          port: ${{ env.FTP_PORT }}
+          local-dir: ./
+          server-dir: ${{ endsWith(env.FTP_BASE_DIR, '/') && env.FTP_BASE_DIR || format('{0}/', env.FTP_BASE_DIR) }}
+          exclude: |
+            **/public/**
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            tests/**
+            storage/framework/**
+            storage/logs/**
+            .env
+
       - name: Upload public directory via FTP (SamKirkland)
         if: ${{ env.FTP_SERVER != '' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
