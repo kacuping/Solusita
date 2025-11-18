@@ -218,6 +218,12 @@ jobs:
             php artisan db:seed --force || true
 
       # FTP fallback: Upload public directory via FTP (SamKirkland)
+      - name: Diagnose FTP target dir
+        if: ${{ env.FTP_SERVER != '' }}
+        run: |
+          echo "FTP_SERVER_DIR=${FTP_SERVER_DIR}"
+          echo "FTP_SERVER_DIR_SLASH=${FTP_SERVER_DIR_SLASH}"
+
       - name: Upload root via FTP (SamKirkland)
         if: ${{ env.FTP_SERVER != '' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
