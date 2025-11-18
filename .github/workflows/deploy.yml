@@ -1,4 +1,4 @@
-name: Deploy to Hostinger via SFTP
+name: Deploy Mirror (mtime)
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     env:
       SFTP_SERVER: ${{ secrets.SFTP_SERVER }}
@@ -28,91 +28,50 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
-          tools: composer
-          extensions: mbstring, bcmath, intl, gd, curl, zip
-          coverage: none
+      # Simplified deploy: pure mirror by name & time
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Composer dependencies (prod)
-        run: composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
-
-      - name: Install NPM dependencies and build assets
-        run: |
-          npm ci
-          npm run build
-
-      - name: Verify Vite manifest exists
-        run: |
-          if [ ! -f "./public/build/manifest.json" ]; then
-            echo "ERROR: Vite manifest.json tidak ditemukan di ./public/build/. Pastikan proses build sukses dan output diarahkan ke public/build."
-            ls -la ./public || true
-            exit 1
-          else
-            echo "OK: ./public/build/manifest.json ditemukan. Lanjut ke deploy."
-          fi
-
-      - name: Validate SFTP/SSH secrets presence
-        if: ${{ env.SFTP_SERVER != '' }}
-        run: |
-          if [ -z "$SFTP_SERVER" ]; then echo "Missing GitHub Secret: SFTP_SERVER" && exit 1; fi
-          if [ -z "$SFTP_USERNAME" ]; then echo "Missing GitHub Secret: SFTP_USERNAME" && exit 1; fi
-          if [ -z "$SFTP_PORT" ]; then echo "Missing GitHub Secret: SFTP_PORT" && exit 1; fi
-          if [ -z "$SFTP_REMOTE_PATH" ]; then echo "Missing GitHub Secret: SFTP_REMOTE_PATH" && exit 1; fi
-          if [ -z "$SFTP_PASSWORD" ] && [ -z "$SSH_PRIVATE_KEY" ]; then
-            echo "Missing authentication: isi salah satu GitHub Secret: SFTP_PASSWORD atau SSH_PRIVATE_KEY"
-            exit 1
-          fi
-          echo "OK: Secrets minimum untuk SFTP terpenuhi."
-
-      - name: Compute deploy variables (SFTP public path)
-        if: ${{ env.SFTP_SERVER != '' }}
+      - name: Normalize remote path
         run: |
           set -e
-          RP=$(printf "%s" "${SFTP_REMOTE_PATH}" | xargs)
-          RP="${RP%/}"
-          PUB=$(printf "%s" "${SFTP_REMOTE_PUBLIC_PATH}" | xargs)
-          if [ -z "${PUB}" ]; then
-            if echo "${RP}" | grep -E '/public$|/public_html$' >/dev/null; then
-              PUB="${RP}"
-            else
-              PUB="${RP}/public"
-            fi
-          fi
-          PUB="${PUB%/}"
-          echo "SFTP_REMOTE_PATH=${RP}" >> $GITHUB_ENV
-          echo "REMOTE_PUBLIC_PATH=${PUB}" >> $GITHUB_ENV
-          echo "Remote path=${RP}"
-          echo "Public path=${PUB}"
+          DIR="${SFTP_REMOTE_PATH:-$FTP_SERVER_DIR}"
+          DIR="${DIR%/}/"
+          echo "REMOTE_DIR_SLASH=${DIR}" >> $GITHUB_ENV
+          echo "Remote dir: ${DIR}"
 
-      - name: Validate FTP secrets presence
-        if: ${{ env.FTP_SERVER != '' }}
-        run: |
-          if [ -z "$FTP_USERNAME" ]; then echo "Missing GitHub Secret: FTP_USERNAME" && exit 1; fi
-          if [ -z "$FTP_PASSWORD" ]; then echo "Missing GitHub Secret: FTP_PASSWORD" && exit 1; fi
-          if [ -z "$FTP_SERVER_DIR" ]; then echo "Missing GitHub Secret: FTP_SERVER_DIR" && exit 1; fi
-          echo "OK: FTP secrets tersedia."
+      - name: Mirror via SFTP (mtime)
+        if: ${{ env.SFTP_SERVER != '' && env.SFTP_USERNAME != '' && env.SFTP_PASSWORD != '' }}
+        uses: pressidium/lftp-mirror-action@v1
+        with:
+          host: ${{ env.SFTP_SERVER }}
+          port: ${{ env.SFTP_PORT }}
+          user: ${{ env.SFTP_USERNAME }}
+          pass: ${{ env.SFTP_PASSWORD }}
+          settings: 'sftp:auto-confirm=yes'
+          onlyNewer: true
+          restoreMTime: true
+          parallel: 3
+          localDir: './'
+          remoteDir: ${{ env.REMOTE_DIR_SLASH }}
+          reverse: true
+          options: "--verbose --delete --no-empty-dirs --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
 
-      # Normalize FTP_SERVER_DIR to always end with a slash and export
-      - name: Normalize FTP server-dir (ensure trailing slash)
-        if: ${{ env.FTP_SERVER != '' }}
-        run: |
-          if [ -z "$FTP_SERVER_DIR" ]; then
-            echo "FTP_SERVER_DIR_SLASH=/" >> $GITHUB_ENV
-            echo "Note: FTP_SERVER_DIR kosong, default ke /"
-          else
-            # remove trailing slashes then add one
-            DIR="${FTP_SERVER_DIR%/}/"
-            echo "FTP_SERVER_DIR_SLASH=${DIR}" >> $GITHUB_ENV
-            echo "Normalized FTP_SERVER_DIR -> ${DIR}"
-          fi
+      - name: Mirror via FTP (mtime)
+        if: ${{ env.FTP_SERVER != '' && env.FTP_USERNAME != '' && env.FTP_PASSWORD != '' }}
+        uses: pressidium/lftp-mirror-action@v1
+        with:
+          host: ${{ env.FTP_SERVER }}
+          port: ${{ env.FTP_PORT }}
+          user: ${{ env.FTP_USERNAME }}
+          pass: ${{ env.FTP_PASSWORD }}
+          onlyNewer: true
+          restoreMTime: true
+          parallel: 3
+          localDir: './'
+          remoteDir: ${{ env.REMOTE_DIR_SLASH }}
+          reverse: true
+          options: "--verbose --delete --no-empty-dirs --exclude-glob .git --exclude-glob .git/** --exclude-glob .github/** --exclude-glob node_modules/** --exclude-glob storage/framework/** --exclude-glob storage/logs/** --exclude-glob .env"
+
+      # Done
 
       # Preflight SSH (key)
       - name: Preflight SSH (key)
@@ -142,44 +101,7 @@ jobs:
             echo "Remote path: ${{ env.SFTP_REMOTE_PATH }}"
             ls -la ${{ env.SFTP_REMOTE_PATH }} || true
 
-      # Upload incremental via SFTP using SamKirkland (hash-based, benar-benar hanya file berubah)
-      - name: Upload only changed files (SFTP - root)
-        if: ${{ env.SFTP_PASSWORD != '' && env.SFTP_SERVER != '' }}
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: ${{ env.SFTP_SERVER }}
-          username: ${{ env.SFTP_USERNAME }}
-          password: ${{ env.SFTP_PASSWORD }}
-          protocol: sftp
-          port: ${{ env.SFTP_PORT }}
-          local-dir: ./
-          server-dir: ${{ env.SFTP_REMOTE_PATH }}/
-          exclude: |
-            public/**
-            **/.git*
-            **/.git*/**
-            .github/**
-            vendor/**
-            node_modules/**
-            tests/**
-            storage/framework/**
-            storage/logs/**
-            .env
-
-      - name: Upload public directory (SFTP - public)
-        if: ${{ env.SFTP_PASSWORD != '' && env.SFTP_SERVER != '' }}
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: ${{ env.SFTP_SERVER }}
-          username: ${{ env.SFTP_USERNAME }}
-          password: ${{ env.SFTP_PASSWORD }}
-          protocol: sftp
-          port: ${{ env.SFTP_PORT }}
-          local-dir: ./public/
-          server-dir: ${{ env.REMOTE_PUBLIC_PATH }}/
-          exclude: |
-            .env
-            vendor/**
+      # Removed SamKirkland SFTP steps; using lftp mirror (mtime) only
 
       - name: Diagnose remote after upload (key)
         if: ${{ success() && env.SSH_PRIVATE_KEY != '' && env.SFTP_SERVER != '' }}
@@ -217,49 +139,4 @@ jobs:
             php artisan migrate --force || true
             php artisan db:seed --force || true
 
-      # FTP fallback: Upload public directory via FTP (SamKirkland)
-      - name: Diagnose FTP target dir
-        if: ${{ env.FTP_SERVER != '' }}
-        run: |
-          echo "FTP_SERVER_DIR=${FTP_SERVER_DIR}"
-          echo "FTP_SERVER_DIR_SLASH=${FTP_SERVER_DIR_SLASH}"
-
-      - name: Upload root via FTP (SamKirkland)
-        if: ${{ env.FTP_SERVER != '' }}
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: ${{ env.FTP_SERVER }}
-          username: ${{ env.FTP_USERNAME }}
-          password: ${{ env.FTP_PASSWORD }}
-          protocol: ftp
-          port: ${{ env.FTP_PORT }}
-          local-dir: ./
-          server-dir: ${{ env.FTP_SERVER_DIR_SLASH }}
-          exclude: |
-            public/**
-            **/.git*
-            **/.git*/**
-            .github/**
-            vendor/**
-            node_modules/**
-            tests/**
-            storage/framework/**
-            storage/logs/**
-            .env
-
-      - name: Upload public directory via FTP (SamKirkland)
-        if: ${{ env.FTP_SERVER != '' }}
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
-        with:
-          server: ${{ env.FTP_SERVER }}
-          username: ${{ env.FTP_USERNAME }}
-          password: ${{ env.FTP_PASSWORD }}
-          protocol: ftp
-          port: ${{ env.FTP_PORT }}
-          local-dir: ./public/
-          server-dir: ${{ env.FTP_SERVER_DIR_SLASH }}
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            .env
+      # Removed SamKirkland FTP steps; using lftp mirror (mtime) only
