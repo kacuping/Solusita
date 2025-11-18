@@ -42,6 +42,18 @@
                             <div>
                                 <div style="font-weight:600; color:#1f2d3d;">{{ optional($b->service)->name ?? 'Layanan' }}</div>
                                 <div style="font-size:13px; color:#7b8ca6;">{{ optional($b->scheduled_at)->format('d M Y H:i') }}</div>
+                                @php($raw = strtolower((string) ($paymentRaw[$b->id] ?? '')))
+                                @php($hasDp = (bool) ($dpExists[$b->id] ?? false))
+                                @php($dpOk = (bool) ($dpPaid[$b->id] ?? false))
+                                @php($dpV = (bool) ($dpVerif[$b->id] ?? false))
+                                <div style="font-size:12px; color:#2a57c4; margin-top:4px;">
+                                    @if ($raw !== 'cash')
+                                        @if ($hasDp)
+                                            DP {{ $dpOk ? 'PAID' : ($dpV ? 'VERIFIKASI' : 'UNPAID') }} ·
+                                        @endif
+                                    @endif
+                                    Pembayaran {{ strtoupper($b->payment_status ?? 'UNPAID') }}
+                                </div>
                                 <div style="font-size:12px; color:#7b8ca6;">{{ \Illuminate\Support\Str::limit($b->address, 40) }}</div>
                             </div>
                             <span style="font-size:12px; padding:4px 8px; border-radius:10px; background:#eef3ff; color:#2a57c4;">{{ $b->status }}</span>

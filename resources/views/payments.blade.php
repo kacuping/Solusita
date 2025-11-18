@@ -108,6 +108,7 @@
                                 <th>Pelanggan</th>
                                 <th>Layanan</th>
                                 <th>Total</th>
+                                <th>DP</th>
                                 <th>Status Pembayaran</th>
                                 <th>Aksi</th>
                             </tr>
@@ -124,11 +125,47 @@
                                     <td>{{ optional($booking->service)->name ?? '-' }}</td>
                                     <td>Rp {{ number_format((float) $booking->total_amount, 0, ',', '.') }}</td>
                                     <td>
+                                        @php(
+                                            $dpMap = ['none' => 'secondary', 'unpaid' => 'warning', 'verifikasi' => 'info', 'paid' => 'success']
+                                        )
+                                        @php(
+                                            $dpRaw = strtolower((string) ($booking->dp_status ?? 'none'))
+                                        )
+                                        @php(
+                                            $n = (string) ($booking->notes ?? '')
+                                        )
+                                        @php(
+                                            $dpRaw = ($dpRaw === '' || $dpRaw === 'none')
+                                                ? (
+                                                    ( $n !== '' && preg_match('/DP\s*Status\s*:\s*Paid/i', $n) ) ? 'paid'
+                                                    : ( ( $n !== '' && preg_match('/DP\s*Proof\s*:/i', $n) ) ? 'verifikasi'
+                                                    : ( ( $n !== '' && preg_match('/DP\s*:\s*Rp\s*/i', $n) ) ? 'unpaid' : 'none' ) )
+                                                )
+                                                : $dpRaw
+                                        )
+                                        <span class="badge bg-{{ $dpMap[$dpRaw] ?? 'secondary' }}">{{ $dpRaw }}</span>
+                                        @if($booking->dp_proof)
+                                            <div><a href="{{ $booking->dp_proof }}" target="_blank">Bukti</a></div>
+                                        @endif
+                                    </td>
+                                    <td>
                                         @php($map = ['unpaid' => 'secondary', 'paid' => 'success', 'refunded' => 'warning', 'failed' => 'danger'])
                                         <span class="badge bg-{{ $map[$booking->payment_status] ?? 'secondary' }}">{{ $booking->payment_status }}</span>
                                     </td>
                                     <td>
                                         <div class="d-flex gap-2 flex-wrap">
+                                            <form method="POST" action="{{ route('payments.dpstatus', $booking) }}">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="dp_status" value="paid">
+                                                <button class="btn btn-sm btn-outline-success" type="submit">DP Terbayar</button>
+                                            </form>
+                                            <form method="POST" action="{{ route('payments.dpstatus', $booking) }}">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="dp_status" value="unpaid">
+                                                <button class="btn btn-sm btn-outline-secondary" type="submit">DP Belum Bayar</button>
+                                            </form>
                                             <form method="POST" action="{{ route('payments.status', $booking) }}">
                                                 @csrf
                                                 @method('PATCH')

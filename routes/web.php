@@ -131,7 +131,23 @@ Route::prefix('customer')->group(function () {
             }
             $cashActive = session('cash_active', true);
 
-            return view('customer.order', compact('service', 'customer', 'minMinutes', 'paymentOptions', 'cashActive'));
+            $dpOption = null;
+            foreach ($paymentOptions as $opt) {
+                if (! empty($opt['active']) && (($opt['type'] ?? '') === 'transfer')) {
+                    $dpOption = $opt;
+                    break;
+                }
+            }
+
+            return view('customer.order', [
+                'service' => $service,
+                'customer' => $customer,
+                'minMinutes' => $minMinutes,
+                'paymentOptions' => $paymentOptions,
+                'cashActive' => $cashActive,
+                'dpAmount' => 50000,
+                'dpOption' => $dpOption,
+            ]);
         })->name('customer.order.create');
         Route::post('/order', function (\Illuminate\Http\Request $request) {
             $user = auth()->user();
@@ -182,13 +198,22 @@ Route::prefix('customer')->group(function () {
             }
 
             $scheduledAt = \Carbon\Carbon::parse($validated['date'].' '.$validated['time']);
+            $isSameDay = $scheduledAt->isSameDay(now());
 
-            // Validate payment method against active methods
-            $file = storage_path('app/payment_options.json');
+            // Validate payment method against active methods (fallback multi-path)
             $options = [];
-            if (file_exists($file)) {
-                $json = file_get_contents($file);
-                $options = json_decode($json, true) ?: [];
+            foreach ([
+                storage_path('app/payment_options.json'),
+                public_path('payment_options.json'),
+                public_path('storage/payment_options.json'),
+            ] as $pfile) {
+                if (file_exists($pfile)) {
+                    $json = file_get_contents($pfile);
+                    $options = json_decode($json, true) ?: [];
+                    if (! empty($options)) {
+                        break;
+                    }
+                }
             }
             $cashActive = session('cash_active', true);
             $allowedMethods = [];
@@ -202,6 +227,10 @@ Route::prefix('customer')->group(function () {
             }
             if (! in_array($validated['payment_method'], $allowedMethods, true)) {
                 return back()->withErrors(['payment_method' => 'Metode pembayaran tidak tersedia.'])->withInput();
+            }
+
+            if ($validated['payment_method'] === 'cash' && ! $isSameDay && ! $request->boolean('agree_dp')) {
+                return back()->withErrors(['agree_dp' => 'Konfirmasi pembayaran DP Rp 50.000 diperlukan untuk jadwal di hari berbeda (khusus pembayaran tunai).'])->withInput();
             }
 
             $priceUnitMinutes = 60;
@@ -249,7 +278,7 @@ Route::prefix('customer')->group(function () {
             }
             $finalAmount = max($subtotal - $discount, 0);
 
-            $booking = \App\Models\Booking::create([
+            $payload = [
                 'customer_id' => $customer->id,
                 'service_id' => $service->id,
                 'scheduled_at' => $scheduledAt,
@@ -262,7 +291,14 @@ Route::prefix('customer')->group(function () {
                 'total_amount' => $finalAmount,
                 'payment_status' => 'unpaid',
                 'promotion_code' => $validated['promotion_code'] ?? null,
-            ]);
+            ];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')) {
+                $payload['dp_status'] = $isSameDay ? 'none' : 'unpaid';
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_proof')) {
+                $payload['dp_proof'] = null;
+            }
+            $booking = \App\Models\Booking::create($payload);
 
             $info = [];
             $pmRaw = (string) $validated['payment_method'];
@@ -283,6 +319,22 @@ Route::prefix('customer')->group(function () {
             }
             $info[] = 'Metode Pembayaran: '.($pmLabel ?: $pmRaw);
             $info[] = 'PaymentKey: '.$pmRaw;
+            if (! $isSameDay) {
+                $info[] = 'DP: Rp 50000';
+                $dpOpt = null;
+                foreach ($options as $opt) {
+                    if (! empty($opt['active']) && (($opt['type'] ?? '') === 'transfer')) {
+                        $dpOpt = $opt;
+                        break;
+                    }
+                }
+                if ($dpOpt) {
+                    $bank = (string) ($dpOpt['bank_name'] ?? '');
+                    $acc = (string) ($dpOpt['bank_account_number'] ?? '');
+                    $name = (string) ($dpOpt['bank_account_name'] ?? '');
+                    $info[] = 'DP Rekening: '.$bank.' '.$acc.' a/n '.$name;
+                }
+            }
             $unit = strtoupper(trim((string) ($service->unit_type ?? 'SATUAN')));
             if (! $isDuration) {
                 if ($unit === 'M2') {
@@ -299,7 +351,10 @@ Route::prefix('customer')->group(function () {
             $booking->notes = trim($booking->notes.' | Order#: '.$orderNo);
             $booking->save();
 
-            return redirect()->route('customer.payment.show', ['booking' => $booking->id, 'method' => $validated['payment_method']]);
+            if ($isSameDay) {
+                return redirect()->route('customer.payment.show', ['booking' => $booking->id, 'method' => $validated['payment_method']]);
+            }
+            return redirect()->route('customer.dp.show', ['booking' => $booking->id]);
         })->name('customer.order.store');
 
         Route::get('/payment/{booking}', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
@@ -367,8 +422,76 @@ Route::prefix('customer')->group(function () {
             if ($booking->customer_id !== $customer->id) {
                 abort(404);
             }
-            return redirect()->route('customer.schedule')->with('status', 'Order kami terima, untuk konfirmasi pembayaran silahkan cek di menu pembayaran');
+            return redirect()->route('customer.schedule')->with('status', 'Order akan di proses, Silahkan lakukan pembayaran pada menu Pembayaran');
         })->name('customer.payment.order');
+
+        Route::get('/payments/{booking}/detail', function (\App\Models\Booking $booking) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            $notes = (string) ($booking->notes ?? '');
+            $method = null;
+            if ($notes !== '' && preg_match('/PaymentKey\s*:\s*(cash|option_[a-z0-9-]+)/i', $notes, $mm)) {
+                $method = strtolower($mm[1]);
+            } elseif ($notes !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*(cash|option_[a-z0-9-]+)/i', $notes, $mm)) {
+                $method = strtolower($mm[1]);
+            }
+            $file = storage_path('app/payment_options.json');
+            $paymentOptions = [];
+            if (file_exists($file)) {
+                $json = file_get_contents($file);
+                $paymentOptions = json_decode($json, true) ?: [];
+            }
+            $methodLabel = null;
+            $paymentOption = null;
+            if ($method === 'cash') {
+                $methodLabel = 'Tunai (Cash)';
+            } elseif (is_string($method) && str_starts_with($method, 'option_')) {
+                $id = substr($method, strlen('option_'));
+                foreach ($paymentOptions as $opt) {
+                    if ((string) ($opt['id'] ?? '') === (string) $id) {
+                        $paymentOption = $opt;
+                        $methodLabel = ($opt['label'] ?? null);
+                        if (($opt['type'] ?? '') === 'transfer' && ($opt['bank_name'] ?? null)) {
+                            $methodLabel = trim(($methodLabel ?: 'Transfer').' · '.($opt['bank_name']));
+                        }
+                        break;
+                    }
+                }
+            }
+            $orderNo = null;
+            if ($notes !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $notes, $mm)) {
+                $orderNo = $mm[1];
+            }
+            $isSameDay = optional($booking->scheduled_at)->isSameDay(now());
+            $raw = $method;
+            $dpRequired = (! $isSameDay) && ($raw === 'cash');
+            $dpPaid = \Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')
+                ? (strtolower((string) ($booking->dp_status ?? 'none')) === 'paid')
+                : (($notes !== '' && preg_match('/DP\s*Status\s*:\s*Paid/i', $notes)) ? true : false);
+            $hasDpNote = ($notes !== '' && preg_match('/DP\s*:\s*Rp\s*/i', $notes));
+            $dpExists = $dpRequired || $hasDpNote || (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')
+                ? (strtolower((string) ($booking->dp_status ?? 'none')) !== 'none')
+                : false);
+            $dpVerif = \Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')
+                ? (strtolower((string) ($booking->dp_status ?? 'none')) === 'verifikasi')
+                : (($notes !== '' && preg_match('/DP\s*Proof\s*:/i', $notes)) ? true : false);
+            $service = \App\Models\Service::find($booking->service_id);
+            return view('customer.payment-detail', [
+                'booking' => $booking,
+                'service' => $service,
+                'orderNo' => $orderNo,
+                'methodLabel' => $methodLabel ?: ($raw ?: '-'),
+                'paymentOption' => $paymentOption,
+                'dpExists' => $dpExists,
+                'dpPaid' => $dpPaid,
+                'dpRequired' => $dpRequired,
+                'dpVerif' => $dpVerif,
+                'methodRaw' => $raw,
+            ]);
+        })->name('customer.payment.detail');
 
         Route::post('/payment/{booking}/cancel', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
             $user = auth()->user();
@@ -445,8 +568,124 @@ Route::prefix('customer')->group(function () {
                 ->orderBy('scheduled_at', 'asc')
                 ->get();
 
-            return view('customer.schedule', compact('bookings', 'customer'));
+            $file = storage_path('app/payment_options.json');
+            $paymentOptions = [];
+            if (file_exists($file)) {
+                $json = file_get_contents($file);
+                $paymentOptions = json_decode($json, true) ?: [];
+            }
+
+            $paymentMethods = [];
+            $paymentRaw = [];
+            $dpRequired = [];
+            $dpPaid = [];
+            $dpExists = [];
+            $dpVerif = [];
+            foreach ($bookings as $b) {
+                $notes = (string) ($b->notes ?? '');
+                $raw = null;
+                if ($notes !== '' && preg_match('/PaymentKey\s*:\s*(cash|option_[a-z0-9-]+)/i', $notes, $mmk)) {
+                    $raw = strtolower(trim((string) $mmk[1]));
+                } elseif ($notes !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*(cash|option_[a-z0-9-]+)/i', $notes, $mm)) {
+                    $raw = strtolower(trim((string) $mm[1]));
+                }
+                $label = null;
+                if ($raw === 'cash') {
+                    $label = 'Tunai (Cash)';
+                } elseif (is_string($raw) && str_starts_with($raw, 'option_')) {
+                    $id = substr($raw, strlen('option_'));
+                    foreach ($paymentOptions as $opt) {
+                        if ((string) ($opt['id'] ?? '') === (string) $id) {
+                            $label = ($opt['label'] ?? null);
+                            if (($opt['type'] ?? '') === 'transfer' && ($opt['bank_name'] ?? null)) {
+                                $label = trim(($label ?: 'Transfer').' · '.($opt['bank_name']));
+                            }
+                            break;
+                        }
+                    }
+                }
+                $paymentMethods[$b->id] = $label ?: ($raw ?: '-');
+                $paymentRaw[$b->id] = $raw ?: null;
+                $isSameDay = optional($b->scheduled_at)->isSameDay(now());
+                $dpRequired[$b->id] = (! $isSameDay) && ($raw === 'cash');
+                $dpPaid[$b->id] = \Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')
+                    ? (strtolower((string) ($b->dp_status ?? 'none')) === 'paid')
+                    : (($notes !== '' && preg_match('/DP\s*Status\s*:\s*Paid/i', $notes)) ? true : false);
+                $hasDpNote = ($notes !== '' && preg_match('/DP\s*:\s*Rp\s*/i', $notes));
+                $dpExists[$b->id] = $dpRequired[$b->id]
+                    || $hasDpNote
+                    || (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')
+                        ? (strtolower((string) ($b->dp_status ?? 'none')) !== 'none')
+                        : false);
+                $dpVerif[$b->id] = \Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')
+                    ? (strtolower((string) ($b->dp_status ?? 'none')) === 'verifikasi')
+                    : (($notes !== '' && preg_match('/DP\s*Proof\s*:/i', $notes)) ? true : false);
+            }
+
+            return view('customer.schedule', compact('bookings', 'customer', 'paymentMethods', 'paymentRaw', 'dpRequired', 'dpPaid', 'dpExists', 'dpVerif'));
         })->name('customer.schedule');
+        Route::get('/payments/me', function () {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            $bookings = \App\Models\Booking::where('customer_id', $customer->id)
+                ->orderBy('scheduled_at', 'desc')
+                ->get();
+            $file = storage_path('app/payment_options.json');
+            $paymentOptions = [];
+            if (file_exists($file)) {
+                $json = file_get_contents($file);
+                $paymentOptions = json_decode($json, true) ?: [];
+            }
+            $paymentMethods = [];
+            $paymentRaw = [];
+            $dpRequired = [];
+            $dpPaid = [];
+            $dpExists = [];
+            $dpVerif = [];
+            foreach ($bookings as $b) {
+                $notes = (string) ($b->notes ?? '');
+                $raw = null;
+                if ($notes !== '' && preg_match('/PaymentKey\s*:\s*([^|]+)/i', $notes, $mmk)) {
+                    $raw = strtolower(trim((string) $mmk[1]));
+                } elseif ($notes !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*([^|]+)/i', $notes, $mm)) {
+                    $raw = strtolower(trim((string) $mm[1]));
+                }
+                $label = null;
+                if ($raw === 'cash') {
+                    $label = 'Tunai (Cash)';
+                } elseif (is_string($raw) && str_starts_with($raw, 'option_')) {
+                    $id = substr($raw, strlen('option_'));
+                    foreach ($paymentOptions as $opt) {
+                        if ((string) ($opt['id'] ?? '') === (string) $id) {
+                            $label = ($opt['label'] ?? null);
+                            if (($opt['type'] ?? '') === 'transfer' && ($opt['bank_name'] ?? null)) {
+                                $label = trim(($label ?: 'Transfer').' · '.($opt['bank_name']));
+                            }
+                            break;
+                        }
+                    }
+                }
+                $paymentMethods[$b->id] = $label ?: ($raw ?: '-');
+                $paymentRaw[$b->id] = $raw ?: null;
+                $isSameDay = optional($b->scheduled_at)->isSameDay(now());
+                $dpRequired[$b->id] = (! $isSameDay) && ($raw === 'cash');
+                $dpPaid[$b->id] = \Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')
+                    ? (strtolower((string) ($b->dp_status ?? 'none')) === 'paid')
+                    : (($notes !== '' && preg_match('/DP\s*Status\s*:\s*Paid/i', $notes)) ? true : false);
+                $hasDpNote = ($notes !== '' && preg_match('/DP\s*:\s*Rp\s*/i', $notes));
+                $dpExists[$b->id] = $dpRequired[$b->id]
+                    || $hasDpNote
+                    || (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')
+                        ? (strtolower((string) ($b->dp_status ?? 'none')) !== 'none')
+                        : false);
+                $dpVerif[$b->id] = \Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')
+                    ? (strtolower((string) ($b->dp_status ?? 'none')) === 'verifikasi')
+                    : (($notes !== '' && preg_match('/DP\s*Proof\s*:/i', $notes)) ? true : false);
+            }
+            $pending = $bookings->filter(fn ($bk) => ($bk->payment_status ?? 'unpaid') !== 'paid');
+            $completed = $bookings->filter(fn ($bk) => ($bk->payment_status ?? 'unpaid') === 'paid');
+            return view('customer.payments', compact('pending', 'completed', 'paymentMethods', 'paymentRaw', 'dpRequired', 'dpPaid', 'dpExists', 'dpVerif'));
+        })->name('customer.payments.index');
         Route::post('/logout', function (\Illuminate\Http\Request $request) {
             auth()->logout();
             $request->session()->invalidate();
@@ -855,6 +1094,23 @@ Route::middleware('auth')->group(function () {
         return back()->with('success', 'Status pembayaran booking #'.$booking->id.' diperbarui.');
     })->name('payments.status');
 
+    Route::patch('/payments/{booking}/dp-status', function (Request $request, \App\Models\Booking $booking) {
+            $data = $request->validate([
+                'dp_status' => ['required', 'in:none,unpaid,verifikasi,paid'],
+            ]);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')) {
+                $booking->dp_status = $data['dp_status'];
+                $booking->save();
+            } else {
+                $mark = strtoupper($data['dp_status']);
+                $marker = 'DP Status: '.($mark === 'PAID' ? 'Paid' : ($mark === 'VERIFIKASI' ? 'Verifikasi' : ($mark === 'UNPAID' ? 'Unpaid' : 'None')));
+                $booking->notes = trim(($booking->notes ? ($booking->notes.' | '.$marker) : $marker));
+                $booking->save();
+            }
+
+            return back()->with('success', 'Status DP booking #'.$booking->id.' diperbarui.');
+    })->name('payments.dpstatus');
+
     // Promotions CRUD
     Route::resource('promotions', \App\Http\Controllers\PromotionsController::class)->names([
         'index' => 'promotions.index',
@@ -1072,3 +1328,64 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+        // DP confirmation page (optional upload proof)
+        Route::get('/dp/{booking}', function (\App\Models\Booking $booking) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            $fileOpts = [];
+            foreach ([
+                storage_path('app/payment_options.json'),
+                public_path('payment_options.json'),
+                public_path('storage/payment_options.json'),
+            ] as $pfile) {
+                if (file_exists($pfile)) {
+                    $json = file_get_contents($pfile);
+                    $fileOpts = json_decode($json, true) ?: [];
+                    if (! empty($fileOpts)) {
+                        break;
+                    }
+                }
+            }
+            $dpOption = null;
+            foreach ($fileOpts as $opt) {
+                if (! empty($opt['active']) && (($opt['type'] ?? '') === 'transfer')) {
+                    $dpOption = $opt;
+                    break;
+                }
+            }
+            return view('customer.dp', [
+                'booking' => $booking,
+                'dpAmount' => 50000,
+                'dpOption' => $dpOption,
+            ]);
+        })->name('customer.dp.show');
+
+        Route::post('/dp/{booking}', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            if ($request->hasFile('dp_proof')) {
+                $request->validate([
+                    'dp_proof' => ['nullable', 'image', 'max:4096'],
+                ]);
+                $path = $request->file('dp_proof')->store('dp', 'public');
+                $url = \Illuminate\Support\Facades\Storage::url($path);
+                if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_proof')) {
+                    $booking->dp_proof = $url;
+                } else {
+                    $booking->notes = trim(($booking->notes ? ($booking->notes.' | DP Proof: '.$url) : ('DP Proof: '.$url)));
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')) {
+                    $booking->dp_status = 'verifikasi';
+                } else {
+                    $booking->notes = trim(($booking->notes ? ($booking->notes.' | DP Status: Verifikasi') : ('DP Status: Verifikasi')));
+                }
+                $booking->save();
+            }
+            return redirect()->route('customer.schedule')->with('status', 'Order kami terima. DP akan diverifikasi oleh admin.');
+        })->name('customer.dp.upload');

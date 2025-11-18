@@ -7,7 +7,7 @@
         <div class="ico"><i class="fa-regular fa-clock"></i></div>
         Order
     </a>
-    <a href="#" class="item">
+    <a href="{{ route('customer.payments.index') }}" class="item {{ (\Illuminate\Support\Facades\Route::is('customer.payments.index') || \Illuminate\Support\Facades\Route::is('customer.payment.*') || \Illuminate\Support\Facades\Route::is('customer.dp.*')) ? 'active' : '' }}">
         <div class="ico"><i class="fa-solid fa-credit-card"></i></div>
         Pembayaran
     </a>

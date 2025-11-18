@@ -440,8 +440,12 @@
         @endif
 
         @if (!empty($lastPaid))
+            @php
+                $n = (string) ($lastPaid->notes ?? '');
+                $ord = ($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $mm)) ? $mm[1] : ('#'.($lastPaid->id));
+            @endphp
             <div class="warning" style="margin-top:8px; color:#155e75; background:#ecfeff; border-color:#a5f3fc;">
-                Pembayaran untuk pesanan #{{ $lastPaid->id }} telah diterima.
+                Pembayaran untuk Order {{ $ord }} telah diterima.
             </div>
             <script>
                 (function() {

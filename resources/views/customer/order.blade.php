@@ -424,6 +424,22 @@
                 </div>
             </div>
 
+            <div class="field" id="dp_section" style="display:none;">
+                <label class="label">Pembayaran DP</label>
+                <div class="input-group" style="display:block;font-size:14px;">
+                    <div style="margin-bottom:6px;">Konfirmasi pembayaran DP Rp {{ number_format($dpAmount ?? 50000, 0, ',', '.') }} diperlukan untuk jadwal di hari berbeda.</div>
+                    @if (!empty($dpOption))
+                        <div style="margin-bottom:6px;">Rekening: {{ $dpOption['bank_name'] ?? '' }} {{ $dpOption['bank_account_number'] ?? '' }} a/n {{ $dpOption['bank_account_name'] ?? '' }}</div>
+                    @else
+                        <div class="alert alert-warning" style="padding:6px 10px;">Nomor rekening belum tersedia. Hubungi admin.</div>
+                    @endif
+                    <div class="form-check" style="margin-top:8px;">
+                        <input class="form-check-input" type="checkbox" name="agree_dp" id="agree_dp" value="1" {{ old('agree_dp') ? 'checked' : '' }}>
+                        <label class="form-check-label" for="agree_dp" style="font-size:14px;">Saya setuju dan akan membayar DP sebesar Rp {{ number_format($dpAmount ?? 50000, 0, ',', '.') }}</label>
+                    </div>
+                </div>
+            </div>
+
             @php($unitType = trim((string) ($service->unit_type ?? 'Satuan')))
             @if ($isDuration)
                 <div class="field">
@@ -550,7 +566,9 @@
                 </div>
             </div>
 
-            <div class="field">
+
+            @php($initialAgree = (bool) old('agree_dp'))
+            <div class="field" id="pm_section" style="{{ !$initialAgree ? 'display:none;' : '' }}">
                 <label class="label">Metode Pembayaran</label>
                 <div class="input-group" style="display:block;font-size:14px;">
                     @php($hasAny = !empty($cashActive))
@@ -588,7 +606,7 @@
 
             <div class="actions">
                 <a href="{{ route('customer.service.show', $service->slug) }}" class="btn btn-secondary">Kembali</a>
-                <button type="submit" class="btn btn-primary">Konfirmasi Pesanan</button>
+                <button type="submit" class="btn btn-primary" id="btn-submit">Konfirmasi Pesanan</button>
             </div>
         </form>
 
@@ -724,6 +742,54 @@
             recalc();
         })();
     </script>
+            <script>
+                (function(){
+                    const dateInput = document.querySelector('input[name="date"]');
+                    const dpSec = document.getElementById('dp_section');
+                    const agree = document.getElementById('agree_dp');
+                    const pmSec = document.getElementById('pm_section');
+            function todayStr(){
+                const d = new Date();
+                const m = String(d.getMonth()+1).padStart(2,'0');
+                const da = String(d.getDate()).padStart(2,'0');
+                return `${d.getFullYear()}-${m}-${da}`;
+            }
+            function toggleDP(){
+                const v = dateInput && dateInput.value || '';
+                const req = Boolean(v) && v !== todayStr();
+                if (dpSec) dpSec.style.display = req ? 'block' : 'none';
+                if (agree) agree.required = !!req;
+                const btn = document.getElementById('btn-submit');
+                if (btn) {
+                    const ok = !req || (agree && agree.checked);
+                    btn.disabled = !ok;
+                }
+                if (pmSec) {
+                    const showPM = !req || (agree && agree.checked);
+                    pmSec.style.display = showPM ? 'block' : 'none';
+                    if (showPM) {
+                        const radios = pmSec.querySelectorAll('input[name="payment_method"]');
+                        let anyChecked = false;
+                        radios.forEach(function(r){ if (r.checked) anyChecked = true; });
+                        if (!anyChecked) {
+                            const cash = document.getElementById('pm_cash');
+                            if (cash) cash.checked = true;
+                        }
+                    }
+                }
+            }
+            document.addEventListener('DOMContentLoaded', toggleDP);
+                    if (agree) {
+                        agree.addEventListener('change', toggleDP);
+                        agree.addEventListener('input', toggleDP);
+                    }
+                    if (dateInput) {
+                        dateInput.addEventListener('input', toggleDP);
+                        dateInput.addEventListener('change', toggleDP);
+                        setTimeout(toggleDP, 0);
+                    }
+                })();
+            </script>
 </body>
 
 </html>
