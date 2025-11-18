@@ -218,6 +218,29 @@ jobs:
             php artisan db:seed --force || true
 
       # FTP fallback: Upload public directory via FTP (SamKirkland)
+      - name: Upload root via FTP (SamKirkland)
+        if: ${{ env.FTP_SERVER != '' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+        with:
+          server: ${{ env.FTP_SERVER }}
+          username: ${{ env.FTP_USERNAME }}
+          password: ${{ env.FTP_PASSWORD }}
+          protocol: ftp
+          port: ${{ env.FTP_PORT }}
+          local-dir: ./
+          server-dir: ${{ env.FTP_SERVER_DIR_SLASH }}
+          exclude: |
+            public/**
+            **/.git*
+            **/.git*/**
+            .github/**
+            vendor/**
+            node_modules/**
+            tests/**
+            storage/framework/**
+            storage/logs/**
+            .env
+
       - name: Upload public directory via FTP (SamKirkland)
         if: ${{ env.FTP_SERVER != '' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
@@ -227,7 +250,7 @@ jobs:
           password: ${{ env.FTP_PASSWORD }}
           protocol: ftp
           port: ${{ env.FTP_PORT }}
-          local-dir: ./public_html/solusita/
+          local-dir: ./public/
           server-dir: ${{ env.FTP_SERVER_DIR_SLASH }}
           exclude: |
             **/.git*
