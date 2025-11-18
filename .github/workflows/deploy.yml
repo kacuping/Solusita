@@ -227,7 +227,7 @@ jobs:
           password: ${{ env.FTP_PASSWORD }}
           protocol: ftp
           port: ${{ env.FTP_PORT }}
-          local-dir: ./public_html/
+          local-dir: ./public_html/solusita
           server-dir: ${{ env.FTP_SERVER_DIR_SLASH }}
           exclude: |
             **/.git*
