@@ -68,7 +68,7 @@
                             <span class="muted">QR IS belum tersedia</span>
                         @endif
                     </div>
-                    <form method="POST" action="{{ route('customer.payment.confirm', ['booking' => $booking->id]) }}" class="btns">
+                    <form method="POST" action="{{ route('customer.payment.order', ['booking' => $booking->id]) }}" class="btns">
                         @csrf
                         <button type="submit" class="btn btn-primary">Order</button>
                     </form>

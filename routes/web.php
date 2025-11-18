@@ -361,6 +361,15 @@ Route::prefix('customer')->group(function () {
             return redirect()->route('customer.schedule')->with('status', 'Pembayaran dikonfirmasi.');
         })->name('customer.payment.confirm');
 
+        Route::post('/payment/{booking}/order', function (\App\Models\Booking $booking) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            return redirect()->route('customer.schedule')->with('status', 'Order kami terima, untuk konfirmasi pembayaran silahkan cek di menu pembayaran');
+        })->name('customer.payment.order');
+
         Route::post('/payment/{booking}/cancel', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
             $user = auth()->user();
             $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
