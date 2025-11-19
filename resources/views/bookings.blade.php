@@ -42,12 +42,13 @@
                     <table class="table table-striped">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>Order</th>
                                 <th>Pelanggan</th>
                                 <th>Layanan</th>
                                 <th>Jadwal</th>
                                 <th>Petugas</th>
                                 <th>Metode</th>
+                                <th>DP</th>
                                 <th>Status</th>
                                 <th>Total</th>
                                 <th>Bayar</th>
@@ -57,7 +58,9 @@
                         <tbody>
                             @foreach ($bookings as $booking)
                                 <tr>
-                                    <td>{{ $booking->id }}</td>
+                                    @php($n = (string) ($booking->notes ?? ''))
+                                    @php($ord = ($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $mm)) ? $mm[1] : ('#'.($booking->id)))
+                                    <td>{{ $ord }}</td>
                                     <td>
                                         {{ optional($booking->customer)->name ?? '-' }}<br>
                                         <small class="text-muted">{{ optional($booking->customer)->email }}</small>
@@ -74,6 +77,15 @@
                                     <td>
                                         {{ ($paymentMethods[$booking->id] ?? '-') }}
                                     </td>
+                                    @php($notes = (string) ($booking->notes ?? ''))
+                                    @php($raw = null)
+                                    @php($raw = ($notes !== '' && preg_match('/PaymentKey\s*:\s*([^|]+)/i', $notes, $mmk)) ? strtolower(trim((string) $mmk[1])) : (($notes !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*([^|]+)/i', $notes, $mm)) ? strtolower(trim((string) $mm[1])) : null))
+                                    @php($isSameDay = optional($booking->scheduled_at)->isSameDay(now()))
+                                    @php($dpReq = (! $isSameDay) && ($raw === 'cash'))
+                                    @php($dpRaw = strtolower((string) ($booking->dp_status ?? 'none')))
+                                    @php($dpRaw = ($dpRaw === '' || $dpRaw === 'none') ? (($notes !== '' && preg_match('/DP\s*Status\s*:\s*Paid/i', $notes)) ? 'paid' : (($notes !== '' && preg_match('/DP\s*Proof\s*:/i', $notes)) ? 'verifikasi' : (($notes !== '' && preg_match('/DP\s*:\s*Rp\s*/i', $notes)) ? 'unpaid' : 'none'))) : $dpRaw)
+                                    @php($dpShow = $dpReq || $dpRaw !== 'none')
+                                    <td>{{ $dpShow ? ($dpRaw === 'paid' ? 'Paid' : ($dpRaw === 'verifikasi' ? 'Verifikasi' : 'Unpaid')) : '-' }}</td>
                                     <td><span class="badge bg-info">{{ $booking->status }}</span></td>
                                     <td>Rp {{ number_format((float) $booking->total_amount, 0, ',', '.') }}</td>
                                     <td>

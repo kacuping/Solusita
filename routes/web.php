@@ -410,6 +410,25 @@ Route::prefix('customer')->group(function () {
             if ($booking->customer_id !== $customer->id) {
                 abort(404);
             }
+            $notes = (string) ($booking->notes ?? '');
+            $method = null;
+            if ($notes !== '' && preg_match('/PaymentKey\s*:\s*(cash|option_[a-z0-9-]+)/i', $notes, $mm)) {
+                $method = strtolower($mm[1]);
+            } elseif ($notes !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*(cash|option_[a-z0-9-]+)/i', $notes, $mm)) {
+                $method = strtolower($mm[1]);
+            }
+            $isSameDay = optional($booking->scheduled_at)->isSameDay(now());
+            $dpRequired = (! $isSameDay) && ($method === 'cash');
+            $dpPaid = \Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')
+                ? (strtolower((string) ($booking->dp_status ?? 'none')) === 'paid')
+                : (($notes !== '' && preg_match('/DP\s*Status\s*:\s*Paid/i', $notes)) ? true : false);
+
+            if ($method === 'cash') {
+                return redirect()->route('customer.schedule')->with('status', 'Order diproses. Pembayaran tunai dilakukan saat petugas datang.');
+            }
+            if ($dpRequired && ! $dpPaid) {
+                return redirect()->route('customer.dp.show', ['booking' => $booking->id])->with('status', 'Silakan bayar DP terlebih dahulu.');
+            }
             $booking->payment_status = 'paid';
             $booking->save();
 
@@ -422,8 +441,48 @@ Route::prefix('customer')->group(function () {
             if ($booking->customer_id !== $customer->id) {
                 abort(404);
             }
+            $notes = (string) ($booking->notes ?? '');
+            $method = null;
+            if ($notes !== '' && preg_match('/PaymentKey\s*:\s*(cash|option_[a-z0-9-]+)/i', $notes, $mm)) {
+                $method = strtolower($mm[1]);
+            } elseif ($notes !== '' && preg_match('/Metode\s+Pembayaran\s*:\s*(cash|option_[a-z0-9-]+)/i', $notes, $mm)) {
+                $method = strtolower($mm[1]);
+            }
+            if (is_string($method) && str_starts_with($method, 'option_')) {
+                $booking->payment_status = 'verifikasi';
+                $booking->save();
+                return redirect()->route('customer.schedule')->with('status', 'Order diproses. Pembayaran akan diverifikasi oleh admin.');
+            }
             return redirect()->route('customer.schedule')->with('status', 'Order akan di proses, Silahkan lakukan pembayaran pada menu Pembayaran');
         })->name('customer.payment.order');
+
+        Route::post('/payment/{booking}/proof', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            if ($request->hasFile('payment_proof')) {
+                $request->validate([
+                    'payment_proof' => ['nullable', 'image', 'max:4096'],
+                ]);
+                $path = $request->file('payment_proof')->store('payments', 'public');
+                $url = \Illuminate\Support\Facades\Storage::url($path);
+                $existing = (string) ($booking->notes ?? '');
+                $marker = 'Payment Proof: '.$url;
+                if ($existing === '') {
+                    $booking->notes = $marker;
+                } else {
+                    if (preg_match('/Payment\s*Proof\s*:\s*[^|]*/i', $existing)) {
+                        $booking->notes = preg_replace('/Payment\s*Proof\s*:\s*[^|]*/i', $marker, $existing) ?: $existing;
+                    } else {
+                        $booking->notes = trim($existing.' | '.$marker);
+                    }
+                }
+                $booking->save();
+            }
+            return redirect()->route('customer.payment.show', ['booking' => $booking->id])->with('status', 'Bukti pembayaran diunggah.');
+        })->name('customer.payment.proof');
 
         Route::get('/payments/{booking}/detail', function (\App\Models\Booking $booking) {
             $user = auth()->user();
@@ -565,6 +624,7 @@ Route::prefix('customer')->group(function () {
             $user = auth()->user();
             $customer = \App\Models\Customer::where('user_id', $user->id)->first();
             $bookings = \App\Models\Booking::where('customer_id', optional($customer)->id)
+                ->with(['service','cleaner'])
                 ->orderBy('scheduled_at', 'asc')
                 ->get();
 
@@ -622,8 +682,75 @@ Route::prefix('customer')->group(function () {
                     : (($notes !== '' && preg_match('/DP\s*Proof\s*:/i', $notes)) ? true : false);
             }
 
-            return view('customer.schedule', compact('bookings', 'customer', 'paymentMethods', 'paymentRaw', 'dpRequired', 'dpPaid', 'dpExists', 'dpVerif'));
+        $reviewed = [];
+        if ($customer && $bookings->count()) {
+            $ids = \App\Models\Review::where('customer_id', $customer->id)
+                ->whereIn('booking_id', $bookings->pluck('id'))
+                ->pluck('booking_id')
+                ->all();
+            foreach ($bookings as $b) {
+                $reviewed[$b->id] = in_array($b->id, $ids, true);
+            }
+        }
+
+        return view('customer.schedule', compact('bookings', 'customer', 'paymentMethods', 'paymentRaw', 'dpRequired', 'dpPaid', 'dpExists', 'dpVerif', 'reviewed'));
         })->name('customer.schedule');
+        Route::get('/schedule/{booking}', function (\App\Models\Booking $booking) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            $booking->load(['service','cleaner']);
+            $review = \App\Models\Review::where('booking_id', $booking->id)
+                ->where('customer_id', $customer->id)
+                ->orderByDesc('created_at')
+                ->first();
+            $cleanerAvg = null;
+            $cleanerCount = 0;
+            if ($booking->cleaner_id) {
+                $cleanerAvg = \App\Models\Review::whereHas('booking', function ($q) use ($booking) {
+                    $q->where('cleaner_id', $booking->cleaner_id);
+                })->avg('rating');
+                $cleanerCount = \App\Models\Review::whereHas('booking', function ($q) use ($booking) {
+                    $q->where('cleaner_id', $booking->cleaner_id);
+                })->count();
+            }
+            $photoUrl = null;
+            if ($booking->cleaner_id) {
+                $file = storage_path('app/cleaner_photos.json');
+                if (file_exists($file)) {
+                    $json = file_get_contents($file);
+                    $photos = json_decode($json, true) ?: [];
+                    $photoUrl = $photos[(string) $booking->cleaner_id] ?? null;
+                }
+            }
+            return view('customer.schedule-detail', compact('booking', 'customer', 'review', 'cleanerAvg', 'cleanerCount', 'photoUrl'));
+        })->name('customer.schedule.detail');
+
+        Route::post('/schedule/{booking}/review', function (\Illuminate\Http\Request $request, \App\Models\Booking $booking) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            $exists = \App\Models\Review::where('booking_id', $booking->id)->where('customer_id', $customer->id)->exists();
+            if ($exists) {
+                return redirect()->route('customer.schedule.detail', ['booking' => $booking->id])->with('status', 'Ulasan sudah dikirim sebelumnya.');
+            }
+            $data = $request->validate([
+                'rating' => ['required', 'integer', 'min:1', 'max:5'],
+                'comment' => ['nullable', 'string', 'max:1000'],
+            ]);
+            \App\Models\Review::create([
+                'booking_id' => $booking->id,
+                'customer_id' => $customer->id,
+                'rating' => (int) $data['rating'],
+                'comment' => (string) ($data['comment'] ?? ''),
+                'status' => 'pending',
+            ]);
+            return redirect()->route('customer.schedule.detail', ['booking' => $booking->id])->with('status', 'Ulasan tersimpan.');
+        })->name('customer.schedule.review.store');
         Route::get('/payments/me', function () {
             $user = auth()->user();
             $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
@@ -1073,6 +1200,31 @@ Route::middleware('auth')->group(function () {
             'refunded_total' => \App\Models\Booking::where('payment_status', 'refunded')->sum('total_amount'),
         ];
 
+        $dpAmountFixed = 50000;
+        $dpTotal = 0;
+        $paidNetTotal = 0;
+        foreach (\App\Models\Booking::all() as $b) {
+            $notes = (string) ($b->notes ?? '');
+            $dpRaw = strtolower((string) ($b->dp_status ?? 'none'));
+            if ($dpRaw === '' || $dpRaw === 'none') {
+                if ($notes !== '' && preg_match('/DP\s*Status\s*:\s*Paid/i', $notes)) {
+                    $dpRaw = 'paid';
+                } elseif ($notes !== '' && preg_match('/DP\s*Proof\s*:/i', $notes)) {
+                    $dpRaw = 'verifikasi';
+                } elseif ($notes !== '' && preg_match('/DP\s*:\s*Rp\s*/i', $notes)) {
+                    $dpRaw = 'unpaid';
+                }
+            }
+            if ($dpRaw === 'paid') {
+                $dpTotal += $dpAmountFixed;
+            }
+            if (strtolower((string) ($b->payment_status ?? 'unpaid')) === 'paid') {
+                $paidNetTotal += max(((float) ($b->total_amount ?? 0)) - (($dpRaw === 'paid') ? $dpAmountFixed : 0), 0);
+            }
+        }
+        $summary['dp_total'] = $dpTotal;
+        $summary['paid_net_total'] = $paidNetTotal;
+
         $file = storage_path('app/payment_options.json');
         $paymentOptions = [];
         if (file_exists($file)) {
@@ -1086,7 +1238,7 @@ Route::middleware('auth')->group(function () {
 
     Route::patch('/payments/{booking}/status', function (Request $request, \App\Models\Booking $booking) {
         $data = $request->validate([
-            'payment_status' => ['required', 'in:unpaid,paid,refunded,failed'],
+            'payment_status' => ['required', 'in:unpaid,verifikasi,paid,refunded,failed'],
         ]);
         $booking->payment_status = $data['payment_status'];
         $booking->save();

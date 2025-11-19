@@ -248,6 +248,11 @@
                             <span class="muted">QR IS belum tersedia</span>
                         @endif
                     </div>
+                    <form method="POST" action="{{ route('customer.payment.proof', ['booking' => $booking->id]) }}" enctype="multipart/form-data" class="btns">
+                        @csrf
+                        <input type="file" name="payment_proof" accept="image/*">
+                        <button type="submit" class="btn btn-secondary">Upload Bukti (opsional)</button>
+                    </form>
                     <form method="POST" action="{{ route('customer.payment.order', ['booking' => $booking->id]) }}"
                         class="btns">
                         @csrf
@@ -265,6 +270,11 @@
                             Rekening</span><span>{{ $paymentOption['bank_account_name'] ?? '-' }}</span></div>
                     <div class="line"><span>No.
                             Rekening</span><span>{{ $paymentOption['bank_account_number'] ?? '-' }}</span></div>
+                    <form method="POST" action="{{ route('customer.payment.proof', ['booking' => $booking->id]) }}" enctype="multipart/form-data" class="btns">
+                        @csrf
+                        <input type="file" name="payment_proof" accept="image/*">
+                        <button type="submit" class="btn btn-secondary">Upload Bukti (opsional)</button>
+                    </form>
                     <form method="POST" action="{{ route('customer.payment.order', ['booking' => $booking->id]) }}"
                         class="btns">
                         @csrf

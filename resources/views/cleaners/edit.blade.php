@@ -9,7 +9,7 @@
 @section('content')
     <div class="card">
         <div class="card-body">
-            <form action="{{ route('cleaners.update', $cleaner) }}" method="POST">
+            <form action="{{ route('cleaners.update', $cleaner) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="row">
@@ -52,6 +52,13 @@
                         <div class="form-group">
                             <label>Umur (otomatis)</label>
                             <input type="text" id="age" class="form-control" value="{{ $cleaner->age ? $cleaner->age . ' th' : '' }}" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label>Upload Foto</label>
+                            <input type="file" name="photo" accept="image/*" class="form-control @error('photo') is-invalid @enderror">
+                            @error('photo')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -110,4 +117,3 @@
         window.addEventListener('DOMContentLoaded', updateAge);
     </script>
 @stop
-

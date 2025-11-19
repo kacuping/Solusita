@@ -51,22 +51,25 @@
                     @endif
                 </span></div>
             @endif
-            <div class="row"><span>Status Pembayaran</span><span>{{ strtolower((string) ($booking->payment_status ?? 'unpaid')) === 'paid' ? 'Paid' : 'Unpaid' }}</span></div>
+            @php($statusRaw = strtolower((string) ($booking->payment_status ?? 'unpaid')))
+            @php($paidDisplay = ($statusRaw === 'paid' && strtolower((string) ($methodRaw ?? '')) !== 'cash') ? 'Paid' : ($statusRaw === 'verifikasi' ? 'Verifikasi' : 'Unpaid'))
+            <div class="row"><span>Status Pembayaran</span><span>{{ $paidDisplay }}</span></div>
             @php($dpAmountFixed = 50000)
             @php($dpPaidLocal = !!$dpPaid)
             @php($total = (float) ($booking->total_amount ?? 0))
             @php($remain = max($total - ($dpPaidLocal ? $dpAmountFixed : 0), 0))
             <div class="row"><span>Tagihan Saat Ini</span><span>Rp {{ number_format($remain, 0, ',', '.') }}</span></div>
             <div class="actions">
-                @if ((string) ($booking->payment_status ?? 'unpaid') !== 'paid')
+                @php($st = strtolower((string) ($booking->payment_status ?? 'unpaid')))
+                @if ($st === 'unpaid')
                     <form method="POST" action="{{ route('customer.payment.cancel', ['booking' => $booking->id]) }}" style="flex:1;">
                         @csrf
                         <button type="submit" class="btn btn-danger" onclick="return confirm('Batalkan transaksi ini?');">Batalkan</button>
                     </form>
                 @endif
                 <a class="btn btn-secondary" href="{{ route('customer.payments.index') }}">Kembali</a>
-                @if (strtolower((string) ($methodRaw ?? '')) !== 'cash')
-                <a class="btn btn-primary" href="{{ route('customer.payment.show', ['booking' => $booking->id]) }}">Bayar</a>
+                @if (strtolower((string) ($methodRaw ?? '')) !== 'cash' && $st === 'unpaid')
+                    <a class="btn btn-primary" href="{{ route('customer.payment.show', ['booking' => $booking->id]) }}">Bayar</a>
                 @endif
             </div>
         </div>

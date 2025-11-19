@@ -35,13 +35,20 @@
                     {{ session('status') }}
                 </div>
             @endif
-            @if(isset($bookings) && $bookings->count())
-                <div class="card" style="padding:0;">
-                    @foreach($bookings as $b)
-                        <div style="padding:12px; border-bottom:1px solid #eef2ff; display:flex; justify-content:space-between; align-items:center;">
+            @php($unfinished = (isset($bookings) ? $bookings->where('status', '!=', 'completed') : collect()))
+            @php($finished = (isset($bookings) ? $bookings->where('status', 'completed') : collect()))
+
+            <div class="card" style="padding:12px; margin-bottom:12px;">
+                <div style="font-weight:700; color:#2a57c4; margin-bottom:8px;">Belum Selesai</div>
+                @if($unfinished->count())
+                    @foreach($unfinished as $b)
+                        <div style="padding:10px 0; border-bottom:1px solid #eef2ff; display:flex; justify-content:space-between; align-items:center;">
                             <div>
                                 <div style="font-weight:600; color:#1f2d3d;">{{ optional($b->service)->name ?? 'Layanan' }}</div>
                                 <div style="font-size:13px; color:#7b8ca6;">{{ optional($b->scheduled_at)->format('d M Y H:i') }}</div>
+                                @if(optional($b->cleaner)->id)
+                                    <div style="font-size:12px; color:#2a57c4;">Petugas: {{ optional($b->cleaner)->full_name ?? optional($b->cleaner)->name }}</div>
+                                @endif
                                 @php($raw = strtolower((string) ($paymentRaw[$b->id] ?? '')))
                                 @php($hasDp = (bool) ($dpExists[$b->id] ?? false))
                                 @php($dpOk = (bool) ($dpPaid[$b->id] ?? false))
@@ -59,12 +66,50 @@
                             <span style="font-size:12px; padding:4px 8px; border-radius:10px; background:#eef3ff; color:#2a57c4;">{{ $b->status }}</span>
                         </div>
                     @endforeach
-                </div>
+                @else
+                    <div class="empty" style="font-size:12px;">Tidak ada order belum selesai.</div>
+                @endif
+            </div>
+
+            <div class="card" style="padding:12px;">
+                <div style="font-weight:700; color:#2a57c4; margin-bottom:8px;">Selesai</div>
+            @if($finished->count())
+                @foreach($finished as $b)
+                    <a href="{{ route('customer.schedule.detail', ['booking' => $b->id]) }}" style="text-decoration:none; color:inherit;">
+                    <div style="padding:10px 0; border-bottom:1px solid #eef2ff; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-weight:600; color:#1f2d3d;">{{ optional($b->service)->name ?? 'Layanan' }}</div>
+                            <div style="font-size:13px; color:#7b8ca6;">{{ optional($b->scheduled_at)->format('d M Y H:i') }}</div>
+                            @if(optional($b->cleaner)->id)
+                                <div style="font-size:12px; color:#2a57c4;">Petugas: {{ optional($b->cleaner)->full_name ?? optional($b->cleaner)->name }}</div>
+                            @endif
+                            @php($raw = strtolower((string) ($paymentRaw[$b->id] ?? '')))
+                            @php($hasDp = (bool) ($dpExists[$b->id] ?? false))
+                            @php($dpOk = (bool) ($dpPaid[$b->id] ?? false))
+                            @php($dpV = (bool) ($dpVerif[$b->id] ?? false))
+                            <div style="font-size:12px; color:#2a57c4; margin-top:4px;">
+                                @if ($raw !== 'cash')
+                                    @if ($hasDp)
+                                        DP {{ $dpOk ? 'PAID' : ($dpV ? 'VERIFIKASI' : 'UNPAID') }} ·
+                                    @endif
+                                @endif
+                                Pembayaran {{ strtoupper($b->payment_status ?? 'UNPAID') }}
+                            </div>
+                            <div style="font-size:12px; color:#7b8ca6;">{{ \Illuminate\Support\Str::limit($b->address, 40) }}</div>
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <span style="font-size:12px; padding:4px 8px; border-radius:10px; background:#dcfce7; color:#166534;">{{ $b->status }}</span>
+                            @if(!empty($reviewed) && ($reviewed[$b->id] ?? false))
+                                <span style="font-size:12px; padding:4px 8px; border-radius:10px; background:#eef3ff; color:#2a57c4;">Sudah Dinilai</span>
+                            @endif
+                        </div>
+                    </div>
+                    </a>
+                @endforeach
             @else
-                <div class="card">
-                    <div class="empty">Belum ada jadwal. Silakan melakukan pemesanan layanan.</div>
-                </div>
+                <div class="empty" style="font-size:12px;">Belum ada order selesai.</div>
             @endif
+        </div>
         </div>
         <div class="footer">
             @include('customer.partials.bottom-nav')

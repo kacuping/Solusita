@@ -123,6 +123,32 @@
             box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
         }
 
+        .notif-popover {
+            position: absolute;
+            right: 18px;
+            top: 64px;
+            width: 280px;
+            background: #fff;
+            color: var(--text);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 10px 12px;
+            z-index: 20;
+        }
+        .notif-popover .title {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+        }
+        .notif-popover .row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #334155;
+            padding: 4px 0;
+        }
+
         .search {
             background: #fff;
             border-radius: 28px;
@@ -408,15 +434,15 @@
     </style>
 </head>
 
-<body>
+<body data-event-key="{{ $notifEventKey ?? '' }}">
     <div class="app">
         <div class="header">
-            <?php
-            $userName = auth()->user()->name ?? 'Pelanggan';
-            $firstName = explode(' ', $userName)[0];
-            $hour = (int) now()->format('H');
-            $greet = $hour < 12 ? 'Selamat Pagi' : ($hour < 18 ? 'Selamat Sore' : 'Selamat Malam');
-            ?>
+            @php
+                $userName = auth()->user()->name ?? 'Pelanggan';
+                $firstName = explode(' ', $userName)[0];
+                $hour = (int) now()->format('H');
+                $greet = $hour < 12 ? 'Selamat Pagi' : ($hour < 18 ? 'Selamat Sore' : 'Selamat Malam');
+            @endphp
             <div class="greeting">
                 <div class="greet-text">
                     <div id="greetLabel">{{ $greet }}</div>
@@ -435,25 +461,20 @@
         <!-- Wave dihapus agar bentuk mengikuti header profil yang ber-radius bawah -->
         <div class="bg-extend" aria-hidden="true"></div>
 
+        <div id="notifPopover" class="notif-popover" hidden>
+            <div class="title">Notifikasi</div>
+            <div id="notifRowMessage" class="row" {{ empty($notifMessage) ? 'hidden' : '' }}><span>Info</span><span>{{ $notifMessage }}</span></div>
+            @if(!empty($notifDetails))
+                <div class="row"><span>Detail</span><span>{{ $notifDetails }}</span></div>
+            @endif
+            <div id="notifRowEmpty" class="row" {{ empty($notifMessage) ? '' : 'hidden' }}><span>Tidak ada notifikasi</span><span></span></div>
+        </div>
+
         @if (!$customer)
             <div class="warning">Profil pelanggan belum ditemukan. Silakan lengkapi data di menu Akun.</div>
         @endif
 
-        @if (!empty($lastPaid))
-            @php
-                $n = (string) ($lastPaid->notes ?? '');
-                $ord = ($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $mm)) ? $mm[1] : ('#'.($lastPaid->id));
-            @endphp
-            <div class="warning" style="margin-top:8px; color:#155e75; background:#ecfeff; border-color:#a5f3fc;">
-                Pembayaran untuk Order {{ $ord }} telah diterima.
-            </div>
-            <script>
-                (function() {
-                    var dot = document.querySelector('.notif-dot');
-                    if (dot) dot.style.display = 'block';
-                })();
-            </script>
-        @endif
+        
 
         <!-- Ringkasan sebagai label di bawah kolom cari -->
         <div class="status">
@@ -486,7 +507,7 @@
                         'Lantai' => 'fa-broom',
                     ];
                 @endphp
-                @forelse(($categories->take(6)) as $cat)
+                @forelse($categories->take(6) as $cat)
                     @php
                         $href = route('customer.services.index', ['category' => $cat->name]);
                         $img = !empty($cat->image)
@@ -520,9 +541,18 @@
             <div class="list">
                 @forelse($topCleaners as $c)
                     <div class="card">
-                        <div class="name">{{ $c->name }} <span
-                                class="badge">{{ number_format($c->avg_rating ?? 0, 1) }}</span></div>
-                        <div class="meta">{{ $c->address ?? 'Lokasi tidak tersedia' }}</div>
+                        <div style="display:flex; gap:12px; align-items:center;">
+                            @php $p = (string) (($cleanerPhotos[(string) ($c->id ?? '')] ?? null)); @endphp
+                            @if($p)
+                                <img src="{{ $p }}" alt="Foto" style="width:48px; height:48px; object-fit:cover; border-radius:10px;">
+                            @else
+                                <div style="width:48px; height:48px; border-radius:10px; background:#eef3ff; display:flex; align-items:center; justify-content:center; color:#7b8ca6;">N/A</div>
+                            @endif
+                            <div>
+                                <div class="name">{{ $c->name }} <span class="badge">{{ number_format($c->avg_rating ?? 0, 1) }}</span></div>
+                                <div class="meta">{{ $c->address ?? 'Lokasi tidak tersedia' }}</div>
+                            </div>
+                        </div>
                         <div class="stars">
                             @for ($s = 1; $s <= 5; $s++)
                                 {{ $s <= round($c->avg_rating ?? 0) ? '★' : '☆' }}
@@ -571,6 +601,26 @@
         var label = (h < 12) ? 'Selamat pagi' : (h < 18 ? 'Selamat sore' : 'Selamat malam');
         var el = document.getElementById('greetLabel');
         if (el) el.textContent = label;
+    })();
+    (function(){
+        var bell = document.getElementById('notifBell');
+        var pop = document.getElementById('notifPopover');
+        var dot = document.querySelector('.notif-dot');
+        var msgRow = document.getElementById('notifRowMessage');
+        var emptyRow = document.getElementById('notifRowEmpty');
+        var eventKey = (document.body && document.body.getAttribute('data-event-key')) || '';
+        function refresh(){
+            var seen = (localStorage.getItem('customerNotifSeen') === eventKey);
+            if (dot) dot.style.display = (!seen && !!eventKey) ? 'block' : 'none';
+            if (msgRow) msgRow.hidden = seen || !eventKey;
+            if (emptyRow) emptyRow.hidden = !(seen || !eventKey);
+        }
+        refresh();
+        function toggle(){ if (!pop) return; var h = pop.hasAttribute('hidden'); if (h) { pop.removeAttribute('hidden'); } else { pop.setAttribute('hidden',''); } }
+        function hide(){ if (!pop) return; pop.setAttribute('hidden',''); }
+        if (bell) { bell.addEventListener('click', function(e){ e.stopPropagation(); if(eventKey){ localStorage.setItem('customerNotifSeen', eventKey); } refresh(); toggle(); }); }
+        document.addEventListener('click', function(){ hide(); });
+        document.addEventListener('keydown', function(e){ if (e.key === 'Escape') hide(); });
     })();
 </script>
 

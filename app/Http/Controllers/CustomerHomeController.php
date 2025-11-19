@@ -116,6 +116,59 @@ class CustomerHomeController extends Controller
                 ->where('payment_status', 'paid')
                 ->orderByDesc('updated_at')
                 ->first();
+            $lastPaidCode = null;
+            if ($lastPaid) {
+                $n = (string) ($lastPaid->notes ?? '');
+                if ($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $mm)) {
+                    $lastPaidCode = (string) $mm[1];
+                } else {
+                    $lastPaidCode = '#'.(string) $lastPaid->id;
+                }
+            }
+
+            $latestStatusEvent = Booking::where('customer_id', $customer->id)
+                ->whereIn('status', ['scheduled', 'completed'])
+                ->orderByDesc('updated_at')
+                ->first();
+
+            $notifMessage = null;
+            $notifEventKey = null;
+            $notifDetails = null;
+            $tsPaid = $lastPaid ? optional($lastPaid->updated_at)->timestamp : null;
+            $tsStatus = $latestStatusEvent ? optional($latestStatusEvent->updated_at)->timestamp : null;
+            if ($tsPaid && (!$tsStatus || $tsPaid >= $tsStatus)) {
+                if ($lastPaidCode) {
+                    $notifMessage = 'Order '.$lastPaidCode.' telah dibayar';
+                    $paidAt = optional($lastPaid->updated_at)->format('d M Y H:i');
+                    $amount = (float) ($lastPaid->total_amount ?? 0);
+                    $notifDetails = 'Total Rp '.number_format($amount, 0, ',', '.').' · '.$paidAt;
+                    $notifEventKey = $lastPaidCode.'|paid|'.(string) $tsPaid;
+                }
+            } elseif ($tsStatus) {
+                $code = null;
+                $n2 = (string) ($latestStatusEvent->notes ?? '');
+                if ($n2 !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n2, $mm2)) {
+                    $code = (string) $mm2[1];
+                } else {
+                    $code = '#'.(string) $latestStatusEvent->id;
+                }
+                if (($latestStatusEvent->status ?? '') === 'scheduled') {
+                    $notifMessage = 'Order '.$code.' telah dijadwalkan';
+                    $schedAt = optional($latestStatusEvent->scheduled_at)->format('d M Y H:i');
+                    $svcName = optional(\App\Models\Service::find($latestStatusEvent->service_id))->name;
+                    $notifDetails = trim(($svcName ? ('Layanan: '.$svcName.' · ') : '').($schedAt ?: ''));
+                } elseif (($latestStatusEvent->status ?? '') === 'completed') {
+                    $notifMessage = 'Order '.$code.' telah selesai';
+                    $doneAt = optional($latestStatusEvent->updated_at)->format('d M Y H:i');
+                    $cleanerNameCol = \Illuminate\Support\Facades\Schema::hasColumn('cleaners', 'full_name') ? 'full_name' : 'name';
+                    $cl = $latestStatusEvent->cleaner_id ? \App\Models\Cleaner::find($latestStatusEvent->cleaner_id) : null;
+                    $clName = $cl ? ($cl->{$cleanerNameCol} ?? $cl->name) : null;
+                    $notifDetails = trim(($clName ? ('Petugas: '.$clName.' · ') : '').($doneAt ?: ''));
+                }
+                if ($notifMessage) {
+                    $notifEventKey = $code.'|'.(string) ($latestStatusEvent->status ?? '').'|'.(string) $tsStatus;
+                }
+            }
         }
 
         // Promo aktif saat ini
@@ -167,17 +220,32 @@ class CustomerHomeController extends Controller
             return (float) ($c->avg_rating ?? 0) > 1.0;
         })->values();
 
-        return view('customer.home', [
-            'customer' => $customer,
-            'nextBooking' => $nextBooking,
-            'upcomingBookings' => $upcomingBookings,
-            'totalPastBookings' => $totalPastBookings,
-            'openOrders' => $openOrders,
-            'completedOrders' => $completedOrders,
-            'activePromotions' => $eligiblePromotions,
-            'categories' => $categories,
-            'topCleaners' => $topCleaners,
-            'lastPaid' => $lastPaid ?? null,
-        ]);
+        $cleanerPhotos = [];
+        $file = storage_path('app/cleaner_photos.json');
+        if (file_exists($file)) {
+            $json = file_get_contents($file);
+            $photos = json_decode($json, true) ?: [];
+            foreach ($topCleaners as $c) {
+                $cleanerPhotos[(string) $c->id] = $photos[(string) $c->id] ?? null;
+            }
+        }
+
+            return view('customer.home', [
+                'customer' => $customer,
+                'nextBooking' => $nextBooking,
+                'upcomingBookings' => $upcomingBookings,
+                'totalPastBookings' => $totalPastBookings,
+                'openOrders' => $openOrders,
+                'completedOrders' => $completedOrders,
+                'activePromotions' => $eligiblePromotions,
+                'categories' => $categories,
+                'topCleaners' => $topCleaners,
+                'lastPaid' => $lastPaid ?? null,
+                'lastPaidCode' => $lastPaidCode ?? null,
+                'notifMessage' => $notifMessage ?? null,
+                'notifEventKey' => $notifEventKey ?? null,
+                'notifDetails' => $notifDetails ?? null,
+                'cleanerPhotos' => $cleanerPhotos,
+            ]);
     }
 }

@@ -38,7 +38,9 @@
             <h3>Belum Dibayar</h3>
             @forelse($pending as $b)
                 <div class="card">
-                    <div class="row"><span>Pesanan</span><span>#{{ $b->id }}</span></div>
+                    @php($n = (string) ($b->notes ?? ''))
+                    @php($ord = ($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $mm)) ? $mm[1] : ('#'.($b->id)))
+                    <div class="row"><span>Order</span><span>{{ $ord }}</span></div>
                     <div class="row"><span>Layanan</span><span>{{ optional(optional($b)->service)->name ?? '-' }}</span></div>
                     <div class="row"><span>Jadwal</span><span>{{ optional($b->scheduled_at)->format('d M Y H:i') }}</span></div>
                     <div class="row"><span>Metode</span><span>{{ $paymentMethods[$b->id] ?? '-' }}</span></div>
@@ -49,7 +51,8 @@
                     @if ($hasDp)
                         <div class="row"><span>DP</span><span>Rp {{ number_format(50000, 0, ',', '.') }} · {{ $dpOk ? 'Paid' : ($dpV ? 'Verifikasi' : 'Unpaid') }}</span></div>
                     @endif
-                    <div class="row"><span>Status Pembayaran</span><span>{{ strtolower((string) ($b->payment_status ?? 'unpaid')) === 'paid' ? 'Paid' : 'Unpaid' }}</span></div>
+                    @php($srw = strtolower((string) ($b->payment_status ?? 'unpaid')))
+                    <div class="row"><span>Status Pembayaran</span><span>{{ $srw === 'paid' ? 'Paid' : ($srw === 'verifikasi' ? 'Verifikasi' : 'Unpaid') }}</span></div>
                     @php($needDp = (bool) ($dpRequired[$b->id] ?? false))
                     @php($dpOk = (bool) ($dpPaid[$b->id] ?? false))
                     @php($dpV = (bool) ($dpVerif[$b->id] ?? false))
@@ -76,7 +79,9 @@
             <h3>Sudah Dibayar</h3>
             @forelse($completed as $b)
                 <div class="card">
-                    <div class="row"><span>Pesanan</span><span>#{{ $b->id }}</span></div>
+                    @php($n = (string) ($b->notes ?? ''))
+                    @php($ord = ($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $mm)) ? $mm[1] : ('#'.($b->id)))
+                    <div class="row"><span>Order</span><span>{{ $ord }}</span></div>
                     <div class="row"><span>Layanan</span><span>{{ optional(optional($b)->service)->name ?? '-' }}</span></div>
                     <div class="row"><span>Jadwal</span><span>{{ optional($b->scheduled_at)->format('d M Y H:i') }}</span></div>
                     <div class="row"><span>Metode</span><span>{{ $paymentMethods[$b->id] ?? '-' }}</span></div>
@@ -87,10 +92,10 @@
                     @if ($hasDpC)
                         <div class="row"><span>DP</span><span>Rp {{ number_format(50000, 0, ',', '.') }} · {{ $dpOkC ? 'Paid' : ($dpVC ? 'Verifikasi' : 'Unpaid') }}</span></div>
                     @endif
-                    <div class="row"><span>Status Pembayaran</span><span>{{ strtolower((string) ($b->payment_status ?? 'unpaid')) === 'paid' ? 'Paid' : 'Unpaid' }}</span></div>
+                    @php($srw2 = strtolower((string) ($b->payment_status ?? 'unpaid')))
+                    <div class="row"><span>Status Pembayaran</span><span>{{ $srw2 === 'paid' ? 'Paid' : ($srw2 === 'verifikasi' ? 'Verifikasi' : 'Unpaid') }}</span></div>
                     <div class="actions">
                         <a class="btn btn-secondary" href="{{ route('customer.payment.detail', ['booking' => $b->id]) }}">Detail Pembayaran</a>
-                        <a class="btn btn-secondary" href="{{ route('customer.home') }}">Beranda</a>
                     </div>
                 </div>
             @empty

@@ -46,7 +46,7 @@
                     <label for="payment_status" class="form-label">Status Pembayaran</label>
                     <select name="payment_status" id="payment_status" class="form-control">
                         <option value="">Semua</option>
-                        @php($statuses = ['unpaid' => 'Belum Bayar', 'paid' => 'Terbayar', 'refunded' => 'Direfund', 'failed' => 'Gagal'])
+                        @php($statuses = ['unpaid' => 'Belum Bayar', 'verifikasi' => 'Verifikasi', 'paid' => 'Terbayar', 'refunded' => 'Direfund', 'failed' => 'Gagal'])
                         @foreach ($statuses as $key => $label)
                             <option value="{{ $key }}" {{ request('payment_status') === $key ? 'selected' : '' }}>
                                 {{ $label }}</option>
@@ -75,7 +75,7 @@
                 <div class="col-md-3">
                     <div class="alert alert-success mb-0">
                         <div>Terbayar</div>
-                        <strong>Rp {{ number_format((float) ($summary['paid_total'] ?? 0), 0, ',', '.') }}</strong>
+                        <strong>Rp {{ number_format((float) ($summary['paid_net_total'] ?? 0), 0, ',', '.') }}</strong>
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -96,6 +96,12 @@
                         <strong>Rp {{ number_format((float) ($summary['refunded_total'] ?? 0), 0, ',', '.') }}</strong>
                     </div>
                 </div>
+                <div class="col-md-3 mt-2">
+                    <div class="alert alert-info mb-0">
+                        <div>Total Pembayaran DP</div>
+                        <strong>Rp {{ number_format((float) ($summary['dp_total'] ?? 0), 0, ',', '.') }}</strong>
+                    </div>
+                </div>
             </div>
 
             @if (isset($bookings) && $bookings->count())
@@ -104,6 +110,7 @@
                         <thead>
                             <tr>
                                 <th>#</th>
+                                <th>Order</th>
                                 <th>Tanggal</th>
                                 <th>Pelanggan</th>
                                 <th>Layanan</th>
@@ -117,6 +124,9 @@
                             @foreach ($bookings as $index => $booking)
                                 <tr>
                                     <td>{{ ($bookings->currentPage() - 1) * $bookings->perPage() + $index + 1 }}</td>
+                                    @php($n = (string) ($booking->notes ?? ''))
+                                    @php($ord = ($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $mm)) ? $mm[1] : ('#'.($booking->id)))
+                                    <td>{{ $ord }}</td>
                                     <td>{{ optional($booking->created_at)->format('d M Y H:i') }}</td>
                                     <td>
                                         {{ optional($booking->customer)->name ?? '-' }}<br>
@@ -143,17 +153,27 @@
                                                 )
                                                 : $dpRaw
                                         )
-                                        <span class="badge bg-{{ $dpMap[$dpRaw] ?? 'secondary' }}">{{ $dpRaw }}</span>
+                                        @if($dpRaw === 'none')
+                                            -
+                                        @else
+                                            <span class="badge bg-{{ $dpMap[$dpRaw] ?? 'secondary' }}">{{ $dpRaw }}</span>
+                                        @endif
                                         @if($booking->dp_proof)
                                             <div><a href="{{ $booking->dp_proof }}" target="_blank">Bukti</a></div>
                                         @endif
                                     </td>
                                     <td>
-                                        @php($map = ['unpaid' => 'secondary', 'paid' => 'success', 'refunded' => 'warning', 'failed' => 'danger'])
+                                        @php($map = ['unpaid' => 'secondary', 'verifikasi' => 'info', 'paid' => 'success', 'refunded' => 'warning', 'failed' => 'danger'])
                                         <span class="badge bg-{{ $map[$booking->payment_status] ?? 'secondary' }}">{{ $booking->payment_status }}</span>
                                     </td>
                                     <td>
                                         <div class="d-flex gap-2 flex-wrap">
+                                            <form method="POST" action="{{ route('payments.status', $booking) }}">
+                                                @csrf
+                                                @method('PATCH')
+                                                <input type="hidden" name="payment_status" value="verifikasi">
+                                                <button class="btn btn-sm btn-outline-info" type="submit">Verifikasi</button>
+                                            </form>
                                             <form method="POST" action="{{ route('payments.dpstatus', $booking) }}">
                                                 @csrf
                                                 @method('PATCH')

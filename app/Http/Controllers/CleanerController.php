@@ -19,7 +19,13 @@ class CleanerController extends Controller
     {
         $nameColumn = Schema::hasColumn('cleaners', 'full_name') ? 'full_name' : 'name';
         $cleaners = Cleaner::orderBy($nameColumn)->paginate(10);
-        return view('cleaners.index', compact('cleaners'));
+        $file = storage_path('app/cleaner_photos.json');
+        $photos = [];
+        if (file_exists($file)) {
+            $json = file_get_contents($file);
+            $photos = json_decode($json, true) ?: [];
+        }
+        return view('cleaners.index', compact('cleaners', 'photos'));
     }
 
     public function create()
@@ -38,6 +44,7 @@ class CleanerController extends Controller
             'bank_account_number' => ['nullable', 'string', 'max:50'],
             'bank_name' => ['nullable', 'string', 'max:100'],
             'bank_account_name' => ['nullable', 'string', 'max:255'],
+            'photo' => ['nullable', 'image', 'max:4096'],
         ]);
 
         $data = $validated;
@@ -51,7 +58,20 @@ class CleanerController extends Controller
             return Schema::hasColumn('cleaners', $k);
         })->all();
 
-        Cleaner::create($filtered);
+        $cleaner = Cleaner::create($filtered);
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('cleaners', 'public');
+            $url = \Illuminate\Support\Facades\Storage::url($path);
+            $file = storage_path('app/cleaner_photos.json');
+            $photos = [];
+            if (file_exists($file)) {
+                $json = file_get_contents($file);
+                $photos = json_decode($json, true) ?: [];
+            }
+            $photos[(string) $cleaner->id] = $url;
+            file_put_contents($file, json_encode($photos));
+        }
 
         return redirect()->route('cleaners.index')->with('success', 'Petugas berhasil ditambahkan. Menunggu approval agar menjadi aktif.');
     }
@@ -72,6 +92,7 @@ class CleanerController extends Controller
             'bank_account_number' => ['nullable', 'string', 'max:50'],
             'bank_name' => ['nullable', 'string', 'max:100'],
             'bank_account_name' => ['nullable', 'string', 'max:255'],
+            'photo' => ['nullable', 'image', 'max:4096'],
         ]);
 
         $data = $validated;
@@ -84,6 +105,19 @@ class CleanerController extends Controller
         })->all();
 
         $cleaner->update($filtered);
+
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('cleaners', 'public');
+            $url = \Illuminate\Support\Facades\Storage::url($path);
+            $file = storage_path('app/cleaner_photos.json');
+            $photos = [];
+            if (file_exists($file)) {
+                $json = file_get_contents($file);
+                $photos = json_decode($json, true) ?: [];
+            }
+            $photos[(string) $cleaner->id] = $url;
+            file_put_contents($file, json_encode($photos));
+        }
 
         return redirect()->route('cleaners.index')->with('success', 'Petugas berhasil diperbarui.');
     }

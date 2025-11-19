@@ -26,6 +26,7 @@
             <table class="table table-hover text-nowrap">
                 <thead>
                     <tr>
+                        <th>Foto</th>
                         <th>Nama Lengkap</th>
                         <th>Alamat</th>
                         <th>Nomor HP/WA</th>
@@ -41,6 +42,14 @@
                 <tbody>
                     @forelse ($cleaners as $cleaner)
                         <tr>
+                            <td>
+                                @php($photo = ($photos[(string) $cleaner->id] ?? null))
+                                @if($photo)
+                                    <img src="{{ $photo }}" alt="Foto" style="width:48px; height:48px; object-fit:cover; border-radius:6px;">
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
                             <td>{{ $cleaner->full_name ?? $cleaner->name }}</td>
                             <td>{{ $cleaner->address }}</td>
                             <td>{{ $cleaner->phone }}</td>
