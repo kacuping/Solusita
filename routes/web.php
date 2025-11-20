@@ -882,6 +882,24 @@ Route::prefix('customer')->group(function () {
 
             return back()->with('status', 'Foto profil diperbarui');
         })->name('customer.profile.avatar');
+        Route::delete('/profile', function (Request $request) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->first();
+            $hasActive = false;
+            if ($customer) {
+                $hasActive = \App\Models\Booking::where('customer_id', $customer->id)
+                    ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
+                    ->exists();
+            }
+            if ($hasActive) {
+                return back()->with('error', 'Tidak dapat menghapus akun saat ada pesanan aktif.');
+            }
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            $user->delete();
+            return redirect()->route('customer.login')->with('status', 'Akun berhasil dihapus.');
+        })->name('customer.profile.destroy');
         Route::get('/avatar/{customer}', function (\App\Models\Customer $customer) {
             $path = (string) ($customer->avatar ?? '');
             if ($path === '') {

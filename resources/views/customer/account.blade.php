@@ -438,9 +438,14 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('customer.logout') }}" style="position:fixed;right:16px;bottom:90px;z-index:50;">
+    <form method="POST" action="{{ route('customer.logout') }}" style="position:fixed;right:16px;bottom:140px;z-index:50;">
         @csrf
         <button class="btn save" style="background:#e45858;color:#fff;">Logout</button>
+    </form>
+    <form method="POST" action="{{ route('customer.profile.destroy') }}" style="position:fixed;right:16px;bottom:90px;z-index:50;" onsubmit="return confirm('Hapus akun Anda secara permanen? Tindakan ini tidak dapat dibatalkan.')">
+        @csrf
+        @method('DELETE')
+        <button class="btn save" style="background:#9b1c1c;color:#fff;">Hapus Akun</button>
     </form>
 
     <script>

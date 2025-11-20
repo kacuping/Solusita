@@ -1,11 +1,13 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.example.solusita",
+      "package_name": "com.solusita.customer",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_SHA256_CERT_FINGERPRINT"
+        "F6:B0:39:99:50:1E:C1:1C:75:AB:B0:85:5A:DB:C3:50:05:B8:6B:9B:44:41:F0:14:17:40:CA:82:2C:7B:91:C4"
       ]
     }
   }
