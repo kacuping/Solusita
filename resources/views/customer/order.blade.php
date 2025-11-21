@@ -37,7 +37,7 @@
 
         /* App container: beri padding bottom untuk menghindari tertutup footer */
         .app {
-            max-width: 420px;
+            max-width: 960px;
             margin: 0 auto;
             min-height: 100vh;
             /* fallback */
@@ -242,7 +242,7 @@
         }
 
         .footer .bar {
-            max-width: 420px;
+            max-width: 960px;
             margin: 0 auto calc(env(safe-area-inset-bottom, 8px));
             display: flex;
             justify-content: space-between;
@@ -253,6 +253,7 @@
             height: var(--footer-height);
             align-items: center;
         }
+        @media (min-width: 768px) { .footer .bar { padding: 8px 10px; } }
 
         .footer .item {
             text-decoration: none;

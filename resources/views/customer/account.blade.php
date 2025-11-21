@@ -23,7 +23,7 @@
         }
 
         .app {
-            max-width: 420px;
+            max-width: 960px;
             margin: 0 auto;
             /* Gunakan unit viewport dinamis agar tidak muncul scroll mikro di mobile */
             min-height: 100vh; /* fallback */
@@ -76,7 +76,7 @@
         .footer { position: fixed; bottom: 0; left: 0; right: 0; }
 
         .footer .bar {
-            max-width: 420px;
+            max-width: 960px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
@@ -85,6 +85,10 @@
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.10);
             padding: 6px 6px; /* perkecil kiri-kanan */
             pointer-events: auto;
+        }
+
+        @media (min-width: 768px) {
+            .footer .bar { padding: 8px 10px; }
         }
 
         .footer .item {

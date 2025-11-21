@@ -24,7 +24,7 @@
         }
 
         .app {
-            max-width: 420px;
+            max-width: 960px;
             margin: 0 auto;
             min-height: 100vh;
             min-height: 100dvh;
@@ -118,7 +118,7 @@
         }
 
         .footer .bar {
-            max-width: 420px;
+            max-width: 960px;
             margin: 0 auto 8px;
             display: flex;
             justify-content: space-between;
@@ -127,6 +127,7 @@
             box-shadow: 0 10px 20px rgba(0, 0, 0, .10);
             padding: 6px 6px;
         }
+        @media (min-width: 768px) { .footer .bar { padding: 8px 10px; } }
 
         .footer .item {
             text-decoration: none;

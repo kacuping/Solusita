@@ -4,6 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Beranda Pelanggan</title>
     <meta name="theme-color" content="#4b88ff" />
     <link rel="manifest" href="/manifest.webmanifest?v={{ time() }}" />
@@ -29,17 +32,13 @@
         }
 
         .app {
-            max-width: 420px;
+            max-width: 960px;
             margin: 0 auto;
-            /* Gunakan unit viewport dinamis agar tidak muncul scroll mikro di mobile */
             min-height: 100vh;
-            /* fallback */
             min-height: 100dvh;
-            /* modern browsers */
             display: flex;
             flex-direction: column;
             position: relative;
-            /* untuk menempatkan bg-extend di belakang konten */
         }
 
         /* Samakan bentuk header dengan halaman profil (kecuali warna) */
@@ -135,12 +134,14 @@
             padding: 10px 12px;
             z-index: 20;
         }
+
         .notif-popover .title {
             font-weight: 600;
             font-size: 13px;
             color: var(--primary-dark);
             margin-bottom: 6px;
         }
+
         .notif-popover .row {
             display: flex;
             justify-content: space-between;
@@ -305,7 +306,7 @@
         }
 
         .footer .bar {
-            max-width: 420px;
+            max-width: 960px;
             margin: 0 auto 8px;
             display: flex;
             justify-content: space-between;
@@ -313,7 +314,6 @@
             border-radius: 18px;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.10);
             padding: 6px 6px;
-            /* perkecil kiri-kanan */
             pointer-events: auto;
         }
 
@@ -431,6 +431,42 @@
             font-size: 13px;
             font-weight: 600;
         }
+
+        @media (min-width: 480px) {
+            .cat-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        @media (min-width: 768px) {
+            .footer .bar {
+                padding: 8px 10px;
+            }
+
+            .cat-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+
+            .list {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .card {
+                height: 100%;
+            }
+
+            .notif-popover {
+                width: 360px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .list {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
     </style>
 </head>
 
@@ -463,18 +499,21 @@
 
         <div id="notifPopover" class="notif-popover" hidden>
             <div class="title">Notifikasi</div>
-            <div id="notifRowMessage" class="row" {{ empty($notifMessage) ? 'hidden' : '' }}><span>Info</span><span>{{ $notifMessage }}</span></div>
-            @if(!empty($notifDetails))
+            <div id="notifRowMessage" class="row" {{ empty($notifMessage) ? 'hidden' : '' }}>
+                <span>Info</span><span>{{ $notifMessage }}</span>
+            </div>
+            @if (!empty($notifDetails))
                 <div class="row"><span>Detail</span><span>{{ $notifDetails }}</span></div>
             @endif
-            <div id="notifRowEmpty" class="row" {{ empty($notifMessage) ? '' : 'hidden' }}><span>Tidak ada notifikasi</span><span></span></div>
+            <div id="notifRowEmpty" class="row" {{ empty($notifMessage) ? '' : 'hidden' }}><span>Tidak ada
+                    notifikasi</span><span></span></div>
         </div>
 
         @if (!$customer)
             <div class="warning">Profil pelanggan belum ditemukan. Silakan lengkapi data di menu Akun.</div>
         @endif
 
-        
+
 
         <!-- Ringkasan sebagai label di bawah kolom cari -->
         <div class="status">
@@ -543,13 +582,17 @@
                     <div class="card">
                         <div style="display:flex; gap:12px; align-items:center;">
                             @php $p = (string) (($cleanerPhotos[(string) ($c->id ?? '')] ?? null)); @endphp
-                            @if($p)
-                                <img src="{{ $p }}" alt="Foto" style="width:48px; height:48px; object-fit:cover; border-radius:10px;">
+                            @if ($p)
+                                <img src="{{ $p }}" alt="Foto"
+                                    style="width:48px; height:48px; object-fit:cover; border-radius:10px;">
                             @else
-                                <div style="width:48px; height:48px; border-radius:10px; background:#eef3ff; display:flex; align-items:center; justify-content:center; color:#7b8ca6;">N/A</div>
+                                <div
+                                    style="width:48px; height:48px; border-radius:10px; background:#eef3ff; display:flex; align-items:center; justify-content:center; color:#7b8ca6;">
+                                    N/A</div>
                             @endif
                             <div>
-                                <div class="name">{{ $c->name }} <span class="badge">{{ number_format($c->avg_rating ?? 0, 1) }}</span></div>
+                                <div class="name">{{ $c->name }} <span
+                                        class="badge">{{ number_format($c->avg_rating ?? 0, 1) }}</span></div>
                                 <div class="meta">{{ $c->address ?? 'Lokasi tidak tersedia' }}</div>
                             </div>
                         </div>
@@ -588,8 +631,14 @@
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js', {
-                scope: '/customer/'
-            });
+                    scope: '/customer/'
+                })
+                .then(function(reg) {
+                    try {
+                        reg.update();
+                    } catch (e) {}
+                })
+                .catch(function() {});
         }
     </script>
 </body>
@@ -602,25 +651,52 @@
         var el = document.getElementById('greetLabel');
         if (el) el.textContent = label;
     })();
-    (function(){
+    (function() {
         var bell = document.getElementById('notifBell');
         var pop = document.getElementById('notifPopover');
         var dot = document.querySelector('.notif-dot');
         var msgRow = document.getElementById('notifRowMessage');
         var emptyRow = document.getElementById('notifRowEmpty');
         var eventKey = (document.body && document.body.getAttribute('data-event-key')) || '';
-        function refresh(){
+
+        function refresh() {
             var seen = (localStorage.getItem('customerNotifSeen') === eventKey);
             if (dot) dot.style.display = (!seen && !!eventKey) ? 'block' : 'none';
             if (msgRow) msgRow.hidden = seen || !eventKey;
             if (emptyRow) emptyRow.hidden = !(seen || !eventKey);
         }
         refresh();
-        function toggle(){ if (!pop) return; var h = pop.hasAttribute('hidden'); if (h) { pop.removeAttribute('hidden'); } else { pop.setAttribute('hidden',''); } }
-        function hide(){ if (!pop) return; pop.setAttribute('hidden',''); }
-        if (bell) { bell.addEventListener('click', function(e){ e.stopPropagation(); if(eventKey){ localStorage.setItem('customerNotifSeen', eventKey); } refresh(); toggle(); }); }
-        document.addEventListener('click', function(){ hide(); });
-        document.addEventListener('keydown', function(e){ if (e.key === 'Escape') hide(); });
+
+        function toggle() {
+            if (!pop) return;
+            var h = pop.hasAttribute('hidden');
+            if (h) {
+                pop.removeAttribute('hidden');
+            } else {
+                pop.setAttribute('hidden', '');
+            }
+        }
+
+        function hide() {
+            if (!pop) return;
+            pop.setAttribute('hidden', '');
+        }
+        if (bell) {
+            bell.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (eventKey) {
+                    localStorage.setItem('customerNotifSeen', eventKey);
+                }
+                refresh();
+                toggle();
+            });
+        }
+        document.addEventListener('click', function() {
+            hide();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') hide();
+        });
     })();
 </script>
 
