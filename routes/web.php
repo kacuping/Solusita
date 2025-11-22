@@ -199,7 +199,7 @@ Route::prefix('customer')->group(function () {
             }
 
             $scheduledAt = \Carbon\Carbon::parse($validated['date'].' '.$validated['time']);
-            $isSameDay = $scheduledAt->isSameDay(now());
+            $isSameDay = $request->has('is_same_day') ? $request->boolean('is_same_day') : $scheduledAt->isSameDay(now());
 
             // Validate payment method against active methods (fallback multi-path)
             $options = [];
@@ -348,7 +348,8 @@ Route::prefix('customer')->group(function () {
                 }
             }
             $booking->notes = trim(($booking->notes ? ($booking->notes.' | '.implode(' | ', $info)) : implode(' | ', $info)));
-            $orderNo = 'ORD-'.now()->format('ymd').str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT);
+            $orderNoDate = $scheduledAt->format('ymd');
+            $orderNo = 'ORD-'.$orderNoDate.str_pad((string) $booking->id, 4, '0', STR_PAD_LEFT);
             $booking->notes = trim($booking->notes.' | Order#: '.$orderNo);
             $booking->save();
 
@@ -1074,6 +1075,44 @@ Route::middleware('auth')->group(function () {
 
         return back()->with('success', 'Petugas berhasil di-assign untuk booking #'.$booking->id);
     })->name('bookings.assign');
+
+    // Halaman assign petugas (GET)
+    Route::get('/bookings/{booking}/assign', function (Request $request, \App\Models\Booking $booking) {
+        $cleaners = \App\Models\Cleaner::where('active', true)->orderBy('full_name')->get();
+        $svcName = optional($booking->service)->name ?? '';
+        $needed = 1;
+        if ($svcName && preg_match('/(\d+)\s*Cleaner/i', (string) $svcName, $sm)) {
+            $needed = max(1, (int) $sm[1]);
+        }
+        $assistantSlots = max(0, $needed - 1);
+        $assistantNames = [];
+        $notes = (string) ($booking->notes ?? '');
+        if ($notes !== '' && preg_match('/assistants\s*:\s*([^|]+)/i', $notes, $m)) {
+            $ids = array_values(array_filter(array_map(function ($v) {
+                return (int) trim((string) $v);
+            }, explode(',', trim((string) $m[1])))));
+            if (! empty($ids)) {
+                $assistantNames = \App\Models\Cleaner::whereIn('id', $ids)->pluck('full_name')->filter()->values()->all();
+                if (empty($assistantNames)) {
+                    $assistantNames = \App\Models\Cleaner::whereIn('id', $ids)->pluck('name')->filter()->values()->all();
+                }
+            }
+        }
+        $statusOptions = [
+            'pending' => 'Pending',
+            'scheduled' => 'Terjadwal',
+            'in_progress' => 'Berjalan',
+            'completed' => 'Selesai',
+            'cancelled' => 'Dibatalkan',
+        ];
+        return view('booking-assign', [
+            'booking' => $booking,
+            'cleaners' => $cleaners,
+            'assistantSlots' => $assistantSlots,
+            'assistantNames' => $assistantNames,
+            'statusOptions' => $statusOptions,
+        ]);
+    })->name('bookings.assign.edit');
 
     // Ubah status booking
     Route::patch('/bookings/{booking}/status', function (Request $request, \App\Models\Booking $booking) {

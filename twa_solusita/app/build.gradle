@@ -24,8 +24,8 @@ def twaManifest = [
     applicationId: 'com.luasbidang.solusita.twa',
     hostName: 'solusita.luasbidang.com', // The domain being opened in the TWA.
     launchUrl: '/customer/login', // The start path for the TWA. Must be relative to the domain.
-    name: 'SolusiTa', // The application name.
-    launcherName: 'SolusiTa', // The name shown on the Android Launcher.
+    name: 'SolusiTa - Mamuju Home Service', // The application name.
+    launcherName: 'SolusiTa - Mamuju Home Service', // The name shown on the Android Launcher.
     themeColor: '#4B88FF', // The color used for the status bar.
     themeColorDark: '#000000', // The color used for the dark status bar.
     navigationColor: '#000000', // The color used for the navigation bar.
@@ -57,8 +57,8 @@ android {
         applicationId "com.luasbidang.solusita.twa"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode 2
-        versionName "2"
+        versionCode 3
+        versionName "2.2"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name
@@ -245,14 +245,40 @@ task replaceLauncherIcons {
         }
     }
 }
-
 preBuild.dependsOn(replaceLauncherIcons)
+
+// Replace splash image with solusita1.jpg
+task replaceSplashImage {
+    doLast {
+        def src = file("$projectDir/../solusita1.jpg")
+        def destDir = file("$projectDir/src/main/res/drawable")
+        def dest = file("$projectDir/src/main/res/drawable/splash.jpg")
+        if (!src.exists()) {
+            println "[replaceSplashImage] Source not found: ${src}"
+            return
+        }
+        if (!destDir.exists()) {
+            destDir.mkdirs()
+        }
+        ant.copy(file: src, tofile: dest, overwrite: true)
+        println "[replaceSplashImage] Replaced splash: ${dest}"
+    }
+}
+preBuild.dependsOn(replaceSplashImage)
 
 task bundleSolusitaV2(type: Copy) {
     dependsOn 'bundleRelease'
     from("$buildDir/outputs/bundle/release/app-release.aab")
     into("$buildDir/outputs/bundle/solusita")
     rename { fileName -> "solusita_v2.aab" }
+}
+
+// Custom bundle name: solusita.2.1.aab
+task bundleSolusita_2_2(type: Copy) {
+    dependsOn 'bundleRelease'
+    from("$buildDir/outputs/bundle/release/app-release.aab")
+    into("$buildDir/outputs/bundle/solusita")
+    rename { fileName -> "solusita.2.2.aab" }
 }
 
 repositories {

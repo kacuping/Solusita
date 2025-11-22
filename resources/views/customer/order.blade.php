@@ -406,6 +406,7 @@
         <form method="POST" action="{{ route('customer.order.store') }}">
             @csrf
             <input type="hidden" name="service_id" value="{{ $service->id }}" />
+            <input type="hidden" name="is_same_day" id="is_same_day" value="">
 
             <div class="field">
                 <label class="label">Tanggal & Waktu</label>
@@ -413,7 +414,7 @@
                     <div class="col">
                         <div class="input-group">
                             <input class="input" type="date" name="date"
-                                value="{{ old('date', now()->format('Y-m-d')) }}" required autocomplete="off">
+                                value="{{ old('date') }}" required autocomplete="off">
                         </div>
                     </div>
                     <div class="col">
@@ -760,6 +761,9 @@
                 const req = Boolean(v) && v !== todayStr();
                 if (dpSec) dpSec.style.display = req ? 'block' : 'none';
                 if (agree) agree.required = !!req;
+                const same = !req;
+                const flag = document.getElementById('is_same_day');
+                if (flag) flag.value = same ? '1' : '0';
                 const btn = document.getElementById('btn-submit');
                 if (btn) {
                     const ok = !req || (agree && agree.checked);
@@ -785,6 +789,9 @@
                         agree.addEventListener('input', toggleDP);
                     }
                     if (dateInput) {
+                        if (!dateInput.value) {
+                            dateInput.value = todayStr();
+                        }
                         dateInput.addEventListener('input', toggleDP);
                         dateInput.addEventListener('change', toggleDP);
                         setTimeout(toggleDP, 0);

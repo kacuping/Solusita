@@ -1,13 +1,21 @@
 [
   {
-    "relation": [
-      "delegate_permission/common.handle_all_urls"
-    ],
+    "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
       "package_name": "com.solusita.customer",
       "sha256_cert_fingerprints": [
         "F6:B0:39:99:50:1E:C1:1C:75:AB:B0:85:5A:DB:C3:50:05:B8:6B:9B:44:41:F0:14:17:40:CA:82:2C:7B:91:C4"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.luasbidang.solusita.twa",
+      "sha256_cert_fingerprints": [
+        "EA:5D:E6:F4:79:8B:8C:67:65:D2:50:67:6B:7F:6E:20:19:39:A6:28:79:6F:D8:AA:D6:2B:E6:8D:8E:7D:23:7D"
       ]
     }
   }

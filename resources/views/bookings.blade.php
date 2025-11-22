@@ -39,7 +39,8 @@
 
             @if (isset($bookings) && $bookings->count())
                 <div class="table-responsive">
-                    <table class="table table-striped">
+                    <div class="text-muted mb-2"><i class="fas fa-hand-pointer"></i> Klik baris untuk assign petugas</div>
+                    <table class="table table-striped table-hover">
                         <thead>
                             <tr>
                                 <th>Order</th>
@@ -57,7 +58,7 @@
                         </thead>
                         <tbody>
                             @foreach ($bookings as $booking)
-                                <tr>
+                                <tr class="clickable-row" data-href="{{ route('bookings.assign.edit', $booking) }}" style="cursor:pointer;" title="Klik untuk assign petugas">
                                     @php($n = (string) ($booking->notes ?? ''))
                                     @php($ord = ($n !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $n, $mm)) ? $mm[1] : ('#'.($booking->id)))
                                     <td>{{ $ord }}</td>
@@ -100,60 +101,34 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <div class="d-flex gap-2 flex-wrap">
-                                            <form method="POST" action="{{ route('bookings.assign', $booking) }}"
-                                                class="form-inline d-flex align-items-center" style="gap:.5rem;">
-                                                @csrf
-                                                @method('PATCH')
-                                                <select name="cleaner_id" class="form-control form-control-sm"
-                                                    style="min-width:160px;">
-                                                    <option value="">-- Pilih Petugas --</option>
-                                                    @foreach ($cleaners ?? [] as $c)
-                                                        <option value="{{ $c->id }}"
-                                                            {{ (int) optional($booking->cleaner)->id === (int) $c->id ? 'selected' : '' }}>
-                                                            {{ $c->full_name ?? $c->name }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
-                                                @for ($i = 0; $i < ($assistantSlots[$booking->id] ?? 0); $i++)
-                                                    <select name="assistants[]" class="form-control form-control-sm" style="min-width:160px;">
-                                                        <option value="">-- Asisten {{ $i + 1 }} --</option>
-                                                        @foreach ($cleaners ?? [] as $c)
-                                                            <option value="{{ $c->id }}">{{ $c->full_name ?? $c->name }}</option>
-                                                        @endforeach
-                                                    </select>
-                                                @endfor
-                                                <button class="btn btn-sm btn-outline-primary"
-                                                    type="submit">Assign</button>
-                                            </form>
-
-                                            <form method="POST" action="{{ route('bookings.status', $booking) }}"
-                                                class="form-inline d-flex align-items-center" style="gap:.5rem;">
-                                                @csrf
-                                                @method('PATCH')
-                                                <select name="status" class="form-control form-control-sm"
-                                                    style="min-width:160px;">
-                                                    @foreach ($statusOptions as $key => $label)
-                                                        <option value="{{ $key }}"
-                                                            {{ $booking->status === $key ? 'selected' : '' }}>
-                                                            {{ $label }}</option>
-                                                    @endforeach
-                                                </select>
-                                                <button class="btn btn-sm btn-outline-success"
-                                                    type="submit">Update</button>
-                                            </form>
-                                            <form method="POST" action="{{ route('bookings.destroy', $booking) }}" onsubmit="return confirm('Hapus jadwal ini?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="btn btn-sm btn-danger" type="submit">Hapus</button>
-                                            </form>
-                                        </div>
+                                        <form method="POST" action="{{ route('bookings.destroy', $booking) }}" onsubmit="return confirm('Hapus jadwal ini?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="btn btn-sm btn-danger" type="submit" title="Hapus" onclick="event.stopPropagation();">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
+                <script>
+                    document.querySelectorAll('.clickable-row').forEach(function(row){
+                        row.addEventListener('click', function(e){
+                            var target = e.target;
+                            while (target && target !== row) {
+                                if (target.tagName === 'BUTTON' || target.tagName === 'A' || target.closest('form')) {
+                                    return;
+                                }
+                                target = target.parentElement;
+                            }
+                            var href = row.getAttribute('data-href');
+                            if (href) window.location.href = href;
+                        });
+                    });
+                </script>
                 {{ $bookings->links() }}
             @else
                 <div class="alert alert-info mb-0">Belum ada pesanan.</div>

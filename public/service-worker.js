@@ -1,6 +1,5 @@
-const CACHE_NAME = 'solusita-cache-v2';
+const CACHE_NAME = 'solusita-cache-v3';
 const URLS_TO_CACHE = [
-  '/',
   '/customer/home',
   '/manifest.webmanifest',
   '/icons/pic.png'
@@ -26,6 +25,19 @@ self.addEventListener('fetch', (event) => {
   const accept = req.headers.get('accept') || '';
   const isHTML = req.mode === 'navigate' || accept.includes('text/html');
 
+  if (req.method && req.method !== 'GET') {
+    event.respondWith(fetch(req));
+    return;
+  }
+
+  try {
+    const url = new URL(req.url);
+    if (url.pathname === '/service-worker.js') {
+      event.respondWith(fetch(req, { cache: 'no-store' }));
+      return;
+    }
+  } catch (e) {}
+
   if (isHTML) {
     event.respondWith((async () => {
       try {
@@ -35,7 +47,9 @@ self.addEventListener('fetch', (event) => {
         return netResp;
       } catch (e) {
         const cached = await caches.match(req);
-        return cached || caches.match('/customer/home');
+        if (cached) return cached;
+        const fallback = await caches.match('/customer/home');
+        return fallback || Response.error();
       }
     })());
     return;
