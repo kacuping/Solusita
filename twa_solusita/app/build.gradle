@@ -45,7 +45,7 @@ def twaManifest = [
     generatorApp: 'bubblewrap-cli', // Application that generated the Android Project
     // The fallback strategy for when Trusted Web Activity is not available. Possible values are
     // 'customtabs' and 'webview'.
-    fallbackType: 'customtabs',
+    fallbackType: 'webview',
     enableSiteSettingsShortcut: 'true',
     orientation: 'portrait',
 ]
@@ -150,9 +150,32 @@ android {
 
         
     }
+    def releaseKeystoreProps = new Properties()
+    def candidateFiles = [file("$rootDir/keystore.properties"), file("$projectDir/keystore.properties")]
+    def ksFile = candidateFiles.find { it.exists() }
+    if (ksFile) {
+        releaseKeystoreProps.load(new FileInputStream(ksFile))
+    }
+    signingConfigs {
+        release {
+            def ksPath = releaseKeystoreProps.getProperty('storeFile', System.getenv('RELEASE_STORE_FILE') ?: '')
+            def ksStorePass = releaseKeystoreProps.getProperty('storePassword', System.getenv('RELEASE_STORE_PASSWORD') ?: '')
+            def ksAlias = releaseKeystoreProps.getProperty('keyAlias', System.getenv('RELEASE_KEY_ALIAS') ?: '')
+            def ksKeyPass = releaseKeystoreProps.getProperty('keyPassword', System.getenv('RELEASE_KEY_PASSWORD') ?: '')
+            if (ksPath && ksStorePass && ksAlias && ksKeyPass) {
+                storeFile file(ksPath)
+                storePassword = ksStorePass
+                keyAlias = ksAlias
+                keyPassword = ksKeyPass
+            } else {
+                println "[signing] Missing keystore properties. Provide storeFile/storePassword/keyAlias/keyPassword via keystore.properties or env vars."
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled true
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {
@@ -200,6 +223,37 @@ task generateShorcutsFile {
 }
 
 preBuild.dependsOn(generateShorcutsFile)
+
+task replaceLauncherIcons {
+    doLast {
+        def iconFile = file("$projectDir/../solusita.png")
+        def densities = [
+                'mipmap-mdpi', 'mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi'
+        ]
+        if (!iconFile.exists()) {
+            println "[replaceLauncherIcons] Source icon not found: ${iconFile}"
+            return
+        }
+        densities.each { d ->
+            def dest = file("$projectDir/src/main/res/${d}/ic_launcher.png")
+            if (!dest.parentFile.exists()) {
+                println "[replaceLauncherIcons] Skip: ${dest.parentFile} not found"
+            } else {
+                ant.copy(file: iconFile, tofile: dest, overwrite: true)
+                println "[replaceLauncherIcons] Replaced: ${dest}"
+            }
+        }
+    }
+}
+
+preBuild.dependsOn(replaceLauncherIcons)
+
+task bundleSolusitaV2(type: Copy) {
+    dependsOn 'bundleRelease'
+    from("$buildDir/outputs/bundle/release/app-release.aab")
+    into("$buildDir/outputs/bundle/solusita")
+    rename { fileName -> "solusita_v2.aab" }
+}
 
 repositories {
     
