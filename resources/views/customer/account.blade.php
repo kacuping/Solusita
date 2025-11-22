@@ -26,8 +26,10 @@
             max-width: 960px;
             margin: 0 auto;
             /* Gunakan unit viewport dinamis agar tidak muncul scroll mikro di mobile */
-            min-height: 100vh; /* fallback */
-            min-height: 100dvh; /* modern browsers */
+            min-height: 100vh;
+            /* fallback */
+            min-height: 100dvh;
+            /* modern browsers */
             display: flex;
             flex-direction: column;
         }
@@ -59,6 +61,31 @@
             object-fit: cover;
         }
 
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.25);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+        }
+
+        .loading-overlay .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         .handle {
             font-weight: 700;
             font-size: 18px;
@@ -72,8 +99,16 @@
 
         /* Footer bottom navigation (samakan perilaku dengan halaman home: fixed) */
         /* Pindahkan ruang ekstra ke .content agar halaman tidak bertambah tinggi (menghindari scrollbar kanan) */
-        .content { padding-bottom: calc(84px + env(safe-area-inset-bottom, 0)); }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; }
+        .content {
+            padding-bottom: calc(84px + env(safe-area-inset-bottom, 0));
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
 
         .footer .bar {
             max-width: 960px;
@@ -83,12 +118,15 @@
             background: #ffffff;
             border-radius: 18px;
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.10);
-            padding: 6px 6px; /* perkecil kiri-kanan */
+            padding: 6px 6px;
+            /* perkecil kiri-kanan */
             pointer-events: auto;
         }
 
         @media (min-width: 768px) {
-            .footer .bar { padding: 8px 10px; }
+            .footer .bar {
+                padding: 8px 10px;
+            }
         }
 
         .footer .item {
@@ -96,7 +134,8 @@
             color: var(--muted);
             text-align: center;
             font-size: 11px;
-            flex: 1; /* distribusi item fleksibel */
+            flex: 1;
+            /* distribusi item fleksibel */
             position: relative;
             padding: 4px 0;
             border-radius: 14px;
@@ -295,15 +334,23 @@
                         $cust = $customer ?? \App\Models\Customer::where('user_id', auth()->id())->first();
                         $photoUrl = optional($cust)->avatar;
                         $useStream = is_string($photoUrl) && preg_match('#^/storage/#', $photoUrl);
-                        $avatarSrc = $photoUrl ? ($useStream && \Illuminate\Support\Facades\Route::has('customer.avatar') ? route('customer.avatar', $cust) : $photoUrl) : null;
+                        $avatarSrc = $photoUrl
+                            ? ($useStream && \Illuminate\Support\Facades\Route::has('customer.avatar')
+                                ? route('customer.avatar', $cust)
+                                : $photoUrl)
+                            : null;
                     @endphp
                     @if ($avatarSrc)
-                        <img src="{{ $avatarSrc }}" alt="Avatar">
+                        <img src="{{ $avatarSrc }}?v={{ optional($cust)->updated_at?->timestamp ?? 0 }}"
+                            alt="Avatar">
                     @else
                         <div
                             style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.15);color:#fff;font-size:36px;">
                             {{ $initial }}</div>
                     @endif
+                    <div id="avatar-loading" class="loading-overlay">
+                        <div class="spinner"></div>
+                    </div>
                     <!-- Popover "Ubah Foto" diposisikan di tengah avatar -->
                     <div id="avatar-popover" class="popover" role="dialog" aria-label="Ubah Foto">
                         <div class="row-btn">
@@ -434,6 +481,19 @@
 
             <p class="muted" style="margin:14px 6px;">Data di atas diambil dari akun Anda. Untuk mengubah informasi,
                 klik pada icon.</p>
+            <div class="section-title">Aksi Akun</div>
+            <div class="account-actions" style="display:flex;gap:8px;margin:14px 6px;">
+                <form method="POST" action="{{ route('customer.logout') }}">
+                    @csrf
+                    <button class="btn" style="background:#e45858;color:#fff;">Logout</button>
+                </form>
+                <form method="POST" action="{{ route('customer.profile.destroy') }}"
+                    onsubmit="return confirm('Hapus akun Anda secara permanen? Tindakan ini tidak dapat dibatalkan.')">
+                    @csrf
+                    @method('DELETE')
+                    <button class="btn" style="background:#9b1c1c;color:#fff;">Hapus Akun</button>
+                </form>
+            </div>
         </div>
         <!-- Bottom bar: tampil di halaman profil, tombol Back to Home dihilangkan saat bottom nav ada -->
 
@@ -442,15 +502,7 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('customer.logout') }}" style="position:fixed;right:16px;bottom:140px;z-index:50;">
-        @csrf
-        <button class="btn save" style="background:#e45858;color:#fff;">Logout</button>
-    </form>
-    <form method="POST" action="{{ route('customer.profile.destroy') }}" style="position:fixed;right:16px;bottom:90px;z-index:50;" onsubmit="return confirm('Hapus akun Anda secara permanen? Tindakan ini tidak dapat dibatalkan.')">
-        @csrf
-        @method('DELETE')
-        <button class="btn save" style="background:#9b1c1c;color:#fff;">Hapus Akun</button>
-    </form>
+
 
     <script>
         // Popover avatar: tampilkan tombol "Ubah" saja
@@ -472,6 +524,8 @@
                 });
                 fileInput.addEventListener('change', () => {
                     if (fileInput.files && fileInput.files.length > 0) {
+                        const overlay = document.getElementById('avatar-loading');
+                        if (overlay) overlay.style.display = 'flex';
                         formUpload.submit();
                         popover.classList.remove('active');
                     }

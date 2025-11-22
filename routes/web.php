@@ -69,6 +69,7 @@ Route::get('/icons/pwa/{size}.png', function ($size) {
     $data = ob_get_clean();
     imagedestroy($canvas);
     imagedestroy($img);
+
     return response($data, 200, [
         'Content-Type' => 'image/png',
         'Cache-Control' => 'public, max-age=31536000',
@@ -354,6 +355,7 @@ Route::prefix('customer')->group(function () {
             if ($isSameDay) {
                 return redirect()->route('customer.payment.show', ['booking' => $booking->id, 'method' => $validated['payment_method']]);
             }
+
             return redirect()->route('customer.dp.show', ['booking' => $booking->id]);
         })->name('customer.order.store');
 
@@ -451,8 +453,10 @@ Route::prefix('customer')->group(function () {
             if (is_string($method) && str_starts_with($method, 'option_')) {
                 $booking->payment_status = 'verifikasi';
                 $booking->save();
+
                 return redirect()->route('customer.schedule')->with('status', 'Order diproses. Pembayaran akan diverifikasi oleh admin.');
             }
+
             return redirect()->route('customer.schedule')->with('status', 'Order akan di proses, Silahkan lakukan pembayaran pada menu Pembayaran');
         })->name('customer.payment.order');
 
@@ -481,6 +485,7 @@ Route::prefix('customer')->group(function () {
                 }
                 $booking->save();
             }
+
             return redirect()->route('customer.payment.show', ['booking' => $booking->id])->with('status', 'Bukti pembayaran diunggah.');
         })->name('customer.payment.proof');
 
@@ -538,6 +543,7 @@ Route::prefix('customer')->group(function () {
                 ? (strtolower((string) ($booking->dp_status ?? 'none')) === 'verifikasi')
                 : (($notes !== '' && preg_match('/DP\s*Proof\s*:/i', $notes)) ? true : false);
             $service = \App\Models\Service::find($booking->service_id);
+
             return view('customer.payment-detail', [
                 'booking' => $booking,
                 'service' => $service,
@@ -624,7 +630,7 @@ Route::prefix('customer')->group(function () {
             $user = auth()->user();
             $customer = \App\Models\Customer::where('user_id', $user->id)->first();
             $bookings = \App\Models\Booking::where('customer_id', optional($customer)->id)
-                ->with(['service','cleaner'])
+                ->with(['service', 'cleaner'])
                 ->orderBy('scheduled_at', 'asc')
                 ->get();
 
@@ -682,18 +688,18 @@ Route::prefix('customer')->group(function () {
                     : (($notes !== '' && preg_match('/DP\s*Proof\s*:/i', $notes)) ? true : false);
             }
 
-        $reviewed = [];
-        if ($customer && $bookings->count()) {
-            $ids = \App\Models\Review::where('customer_id', $customer->id)
-                ->whereIn('booking_id', $bookings->pluck('id'))
-                ->pluck('booking_id')
-                ->all();
-            foreach ($bookings as $b) {
-                $reviewed[$b->id] = in_array($b->id, $ids, true);
+            $reviewed = [];
+            if ($customer && $bookings->count()) {
+                $ids = \App\Models\Review::where('customer_id', $customer->id)
+                    ->whereIn('booking_id', $bookings->pluck('id'))
+                    ->pluck('booking_id')
+                    ->all();
+                foreach ($bookings as $b) {
+                    $reviewed[$b->id] = in_array($b->id, $ids, true);
+                }
             }
-        }
 
-        return view('customer.schedule', compact('bookings', 'customer', 'paymentMethods', 'paymentRaw', 'dpRequired', 'dpPaid', 'dpExists', 'dpVerif', 'reviewed'));
+            return view('customer.schedule', compact('bookings', 'customer', 'paymentMethods', 'paymentRaw', 'dpRequired', 'dpPaid', 'dpExists', 'dpVerif', 'reviewed'));
         })->name('customer.schedule');
         Route::get('/schedule/{booking}', function (\App\Models\Booking $booking) {
             $user = auth()->user();
@@ -701,7 +707,7 @@ Route::prefix('customer')->group(function () {
             if ($booking->customer_id !== $customer->id) {
                 abort(404);
             }
-            $booking->load(['service','cleaner']);
+            $booking->load(['service', 'cleaner']);
             $review = \App\Models\Review::where('booking_id', $booking->id)
                 ->where('customer_id', $customer->id)
                 ->orderByDesc('created_at')
@@ -725,6 +731,7 @@ Route::prefix('customer')->group(function () {
                     $photoUrl = $photos[(string) $booking->cleaner_id] ?? null;
                 }
             }
+
             return view('customer.schedule-detail', compact('booking', 'customer', 'review', 'cleanerAvg', 'cleanerCount', 'photoUrl'));
         })->name('customer.schedule.detail');
 
@@ -749,6 +756,7 @@ Route::prefix('customer')->group(function () {
                 'comment' => (string) ($data['comment'] ?? ''),
                 'status' => 'pending',
             ]);
+
             return redirect()->route('customer.schedule.detail', ['booking' => $booking->id])->with('status', 'Ulasan tersimpan.');
         })->name('customer.schedule.review.store');
         Route::get('/payments/me', function () {
@@ -811,12 +819,14 @@ Route::prefix('customer')->group(function () {
             }
             $pending = $bookings->filter(fn ($bk) => ($bk->payment_status ?? 'unpaid') !== 'paid');
             $completed = $bookings->filter(fn ($bk) => ($bk->payment_status ?? 'unpaid') === 'paid');
+
             return view('customer.payments', compact('pending', 'completed', 'paymentMethods', 'paymentRaw', 'dpRequired', 'dpPaid', 'dpExists', 'dpVerif'));
         })->name('customer.payments.index');
         Route::post('/logout', function (\Illuminate\Http\Request $request) {
             auth()->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
+
             return redirect()->route('customer.login');
         })->name('customer.logout');
         // Simple JSON notifications endpoint for polling
@@ -862,7 +872,7 @@ Route::prefix('customer')->group(function () {
             $customer->dob = $validated['dob'] ?? $customer->dob;
             $customer->save();
 
-            return back()->with('status', 'Profil diperbarui');
+            return redirect()->route('customer.profile')->with('status', 'Profil diperbarui');
         })->name('customer.profile.update');
         // Upload avatar pelanggan
         Route::post('/profile/avatar', function (Request $request) {
@@ -880,7 +890,7 @@ Route::prefix('customer')->group(function () {
                 $customer->save();
             }
 
-            return back()->with('status', 'Foto profil diperbarui');
+            return redirect()->route('customer.profile')->with('status', 'Foto profil diperbarui');
         })->name('customer.profile.avatar');
         Route::delete('/profile', function (Request $request) {
             $user = auth()->user();
@@ -898,6 +908,7 @@ Route::prefix('customer')->group(function () {
             $request->session()->invalidate();
             $request->session()->regenerateToken();
             $user->delete();
+
             return redirect()->route('customer.login')->with('status', 'Akun berhasil dihapus.');
         })->name('customer.profile.destroy');
         Route::get('/avatar/{customer}', function (\App\Models\Customer $customer) {
@@ -1265,20 +1276,20 @@ Route::middleware('auth')->group(function () {
     })->name('payments.status');
 
     Route::patch('/payments/{booking}/dp-status', function (Request $request, \App\Models\Booking $booking) {
-            $data = $request->validate([
-                'dp_status' => ['required', 'in:none,unpaid,verifikasi,paid'],
-            ]);
-            if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')) {
-                $booking->dp_status = $data['dp_status'];
-                $booking->save();
-            } else {
-                $mark = strtoupper($data['dp_status']);
-                $marker = 'DP Status: '.($mark === 'PAID' ? 'Paid' : ($mark === 'VERIFIKASI' ? 'Verifikasi' : ($mark === 'UNPAID' ? 'Unpaid' : 'None')));
-                $booking->notes = trim(($booking->notes ? ($booking->notes.' | '.$marker) : $marker));
-                $booking->save();
-            }
+        $data = $request->validate([
+            'dp_status' => ['required', 'in:none,unpaid,verifikasi,paid'],
+        ]);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')) {
+            $booking->dp_status = $data['dp_status'];
+            $booking->save();
+        } else {
+            $mark = strtoupper($data['dp_status']);
+            $marker = 'DP Status: '.($mark === 'PAID' ? 'Paid' : ($mark === 'VERIFIKASI' ? 'Verifikasi' : ($mark === 'UNPAID' ? 'Unpaid' : 'None')));
+            $booking->notes = trim(($booking->notes ? ($booking->notes.' | '.$marker) : $marker));
+            $booking->save();
+        }
 
-            return back()->with('success', 'Status DP booking #'.$booking->id.' diperbarui.');
+        return back()->with('success', 'Status DP booking #'.$booking->id.' diperbarui.');
     })->name('payments.dpstatus');
 
     // Promotions CRUD
@@ -1498,64 +1509,66 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
-        // DP confirmation page (optional upload proof)
-        Route::get('/dp/{booking}', function (\App\Models\Booking $booking) {
-            $user = auth()->user();
-            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
-            if ($booking->customer_id !== $customer->id) {
-                abort(404);
+// DP confirmation page (optional upload proof)
+Route::get('/dp/{booking}', function (\App\Models\Booking $booking) {
+    $user = auth()->user();
+    $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+    if ($booking->customer_id !== $customer->id) {
+        abort(404);
+    }
+    $fileOpts = [];
+    foreach ([
+        storage_path('app/payment_options.json'),
+        public_path('payment_options.json'),
+        public_path('storage/payment_options.json'),
+    ] as $pfile) {
+        if (file_exists($pfile)) {
+            $json = file_get_contents($pfile);
+            $fileOpts = json_decode($json, true) ?: [];
+            if (! empty($fileOpts)) {
+                break;
             }
-            $fileOpts = [];
-            foreach ([
-                storage_path('app/payment_options.json'),
-                public_path('payment_options.json'),
-                public_path('storage/payment_options.json'),
-            ] as $pfile) {
-                if (file_exists($pfile)) {
-                    $json = file_get_contents($pfile);
-                    $fileOpts = json_decode($json, true) ?: [];
-                    if (! empty($fileOpts)) {
-                        break;
-                    }
-                }
-            }
-            $dpOption = null;
-            foreach ($fileOpts as $opt) {
-                if (! empty($opt['active']) && (($opt['type'] ?? '') === 'transfer')) {
-                    $dpOption = $opt;
-                    break;
-                }
-            }
-            return view('customer.dp', [
-                'booking' => $booking,
-                'dpAmount' => 50000,
-                'dpOption' => $dpOption,
-            ]);
-        })->name('customer.dp.show');
+        }
+    }
+    $dpOption = null;
+    foreach ($fileOpts as $opt) {
+        if (! empty($opt['active']) && (($opt['type'] ?? '') === 'transfer')) {
+            $dpOption = $opt;
+            break;
+        }
+    }
 
-        Route::post('/dp/{booking}', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
-            $user = auth()->user();
-            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
-            if ($booking->customer_id !== $customer->id) {
-                abort(404);
-            }
-            if ($request->hasFile('dp_proof')) {
-                $request->validate([
-                    'dp_proof' => ['nullable', 'image', 'max:4096'],
-                ]);
-                $path = $request->file('dp_proof')->store('dp', 'public');
-                $url = \Illuminate\Support\Facades\Storage::url($path);
-                if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_proof')) {
-                    $booking->dp_proof = $url;
-                } else {
-                    $booking->notes = trim(($booking->notes ? ($booking->notes.' | DP Proof: '.$url) : ('DP Proof: '.$url)));
-                }
-                if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')) {
-                    $booking->dp_status = 'verifikasi';
-                } else {
-                    $booking->notes = trim(($booking->notes ? ($booking->notes.' | DP Status: Verifikasi') : ('DP Status: Verifikasi')));
-                }
-                $booking->save();
-            }
-            return redirect()->route('customer.schedule')->with('status', 'Order kami terima. DP akan diverifikasi oleh admin.');
-        })->name('customer.dp.upload');
+    return view('customer.dp', [
+        'booking' => $booking,
+        'dpAmount' => 50000,
+        'dpOption' => $dpOption,
+    ]);
+})->name('customer.dp.show');
+
+Route::post('/dp/{booking}', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
+    $user = auth()->user();
+    $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+    if ($booking->customer_id !== $customer->id) {
+        abort(404);
+    }
+    if ($request->hasFile('dp_proof')) {
+        $request->validate([
+            'dp_proof' => ['nullable', 'image', 'max:4096'],
+        ]);
+        $path = $request->file('dp_proof')->store('dp', 'public');
+        $url = \Illuminate\Support\Facades\Storage::url($path);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_proof')) {
+            $booking->dp_proof = $url;
+        } else {
+            $booking->notes = trim(($booking->notes ? ($booking->notes.' | DP Proof: '.$url) : ('DP Proof: '.$url)));
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('bookings', 'dp_status')) {
+            $booking->dp_status = 'verifikasi';
+        } else {
+            $booking->notes = trim(($booking->notes ? ($booking->notes.' | DP Status: Verifikasi') : ('DP Status: Verifikasi')));
+        }
+        $booking->save();
+    }
+
+    return redirect()->route('customer.schedule')->with('status', 'Order kami terima. DP akan diverifikasi oleh admin.');
+})->name('customer.dp.upload');
