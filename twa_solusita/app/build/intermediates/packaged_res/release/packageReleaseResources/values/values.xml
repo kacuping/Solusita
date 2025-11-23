@@ -5,6 +5,7 @@
     <color name="backgroundColor">#F2F6FF</color>
     <color name="colorPrimary">#4B88FF</color>
     <color name="colorPrimaryDark">#000000</color>
+    <color name="ic_launcher_background">#4B88FF</color>
     <color name="navigationColor">#000000</color>
     <color name="navigationColorDark">#000000</color>
     <color name="navigationDividerColor">#000000</color>

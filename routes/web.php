@@ -838,13 +838,32 @@ Route::prefix('customer')->group(function () {
             $openOrders = (clone $query)->whereIn('status', ['pending', 'scheduled', 'in_progress'])->count();
             $completedOrders = (clone $query)->where('status', 'completed')->count();
             $lastChange = (clone $query)->orderByDesc('updated_at')->value('updated_at');
+            $lastStatus = (clone $query)->orderByDesc('updated_at')->value('status');
 
             return response()->json([
                 'open_orders' => $openOrders,
                 'completed_orders' => $completedOrders,
                 'last_change_at' => optional($lastChange)->toIso8601String(),
+                'last_status' => $lastStatus,
             ]);
         })->name('customer.notifications');
+        Route::get('/push/key', function(){
+            $pub = (string) (env('VAPID_PUBLIC_KEY', ''));
+            return response()->json(['public_key' => $pub]);
+        })->name('customer.push.key');
+        Route::post('/push/subscribe', function (Request $request) {
+            $user = auth()->user();
+            $payload = $request->getContent();
+            $file = storage_path('app/push_subscriptions.json');
+            $all = [];
+            if (file_exists($file)) {
+                $json = file_get_contents($file);
+                $all = json_decode($json, true) ?: [];
+            }
+            $all[(string) $user->id] = $payload ? json_decode($payload, true) : null;
+            file_put_contents($file, json_encode($all));
+            return response()->json(['ok' => true]);
+        })->name('customer.push.subscribe');
         // Update profil pelanggan (inline edit)
         Route::post('/profile/update', function (Request $request) {
             $user = auth()->user();
@@ -1135,6 +1154,56 @@ Route::middleware('auth')->group(function () {
         ]);
         $booking->status = $data['status'];
         $booking->save();
+
+        try {
+            $customer = \App\Models\Customer::find($booking->customer_id);
+            $userId = $customer?->user_id;
+            if ($userId) {
+                $file = storage_path('app/push_subscriptions.json');
+                if (file_exists($file)) {
+                    $json = file_get_contents($file);
+                    $subs = json_decode($json, true) ?: [];
+                    $entry = $subs[(string) $userId] ?? null;
+                    $payload = null;
+                    if (is_array($entry) && isset($entry['subscription'])) {
+                        $payload = $entry['subscription'];
+                    } elseif (is_array($entry)) {
+                        $payload = $entry; // backward
+                    }
+                    if (is_array($payload) && isset($payload['endpoint'])) {
+                        $notes = (string) ($booking->notes ?? '');
+                        $orderCode = null;
+                        if ($notes !== '' && preg_match('/Order#:\s*(ORD-[0-9]+)/i', $notes, $mm)) {
+                            $orderCode = (string) $mm[1];
+                        } else {
+                            $orderCode = '#'.(string) $booking->id;
+                        }
+                        $title = 'Order '.$orderCode;
+                        $map = [
+                            'pending' => 'Order telah kami terima, Menunggu Verifikasi',
+                            'scheduled' => 'Cleaner Segera kelokasi anda',
+                            'in_progress' => 'Pengerjaan dilakukan',
+                            'completed' => 'Order telah selesai dikerjakan',
+                        ];
+                        $body = $map[$booking->status] ?? ('Status berubah menjadi '.ucfirst($booking->status));
+                        $out = json_encode(['title' => $title, 'body' => $body, 'url' => route('customer.home'), 'icon' => '/icons/solusita_notif.png']);
+                        if (class_exists(\Minishlink\WebPush\WebPush::class)) {
+                            $auth = [
+                                'VAPID' => [
+                                    'subject' => config('app.url'),
+                                    'publicKey' => (string) env('VAPID_PUBLIC_KEY', ''),
+                                    'privateKey' => (string) env('VAPID_PRIVATE_KEY', ''),
+                                ],
+                            ];
+                            $webPush = new \Minishlink\WebPush\WebPush($auth);
+                            $subscription = \Minishlink\WebPush\Subscription::create($payload);
+                            $webPush->sendOneNotification($subscription, $out);
+                            foreach ($webPush->flush() as $report) { /* no-op */ }
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) { /* silent */ }
 
         return back()->with('success', 'Status booking #'.$booking->id.' diperbarui.');
     })->name('bookings.status');

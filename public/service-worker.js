@@ -36,7 +36,7 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(fetch(req, { cache: 'no-store' }));
       return;
     }
-  } catch (e) {}
+  } catch (e) { }
 
   if (isHTML) {
     event.respondWith((async () => {
@@ -64,4 +64,23 @@ self.addEventListener('fetch', (event) => {
     }).catch(() => cached);
     return cached || fetchPromise;
   })());
+});
+
+self.addEventListener('push', function (event) {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = {}; }
+  const title = data.title || '';
+  const body = data.body || 'Ada pembaruan';
+  const url = data.url || '/customer/home';
+  const icon = data.icon || '/icons/solusita_notif.png';
+  event.waitUntil(self.registration.showNotification(title, { body, icon, data: { url } }));
+});
+
+self.addEventListener('notificationclick', function (event) {
+  const url = (event.notification && event.notification.data && event.notification.data.url) || '/customer/home';
+  event.notification.close();
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+    for (let i = 0; i < list.length; i++) { const c = list[i]; if (c.url && c.url.includes(url)) { c.focus(); return; } }
+    if (clients.openWindow) return clients.openWindow(url);
+  }));
 });

@@ -57,8 +57,8 @@ android {
         applicationId "com.luasbidang.solusita.twa"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode 3
-        versionName "2.2"
+        versionCode 4
+        versionName "2.3"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name
@@ -291,11 +291,11 @@ task bundleSolusitaV2(type: Copy) {
 }
 
 // Custom bundle name: solusita.2.1.aab
-task bundleSolusita_2_2(type: Copy) {
+task bundleSolusita_2_3(type: Copy) {
     dependsOn 'bundleRelease'
     from("$buildDir/outputs/bundle/release/app-release.aab")
     into("$buildDir/outputs/bundle/solusita")
-    rename { fileName -> "solusita.2.2.aab" }
+    rename { fileName -> "solusita.2.3.aab" }
 }
 
 repositories {
