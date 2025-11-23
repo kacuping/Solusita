@@ -45,7 +45,7 @@
                             <td>
                                 @php($photo = ($photos[(string) $cleaner->id] ?? null))
                                 @if($photo)
-                                    <img src="{{ $photo }}" alt="Foto" style="width:48px; height:48px; object-fit:cover; border-radius:6px;">
+                                    <img src="{{ route('cleaners.photo', $cleaner) }}?v={{ optional($cleaner->updated_at)->timestamp ?? 0 }}" alt="Foto" style="width:48px; height:48px; object-fit:cover; border-radius:6px;">
                                 @else
                                     <span class="text-muted">-</span>
                                 @endif

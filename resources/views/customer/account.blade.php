@@ -360,6 +360,7 @@
                             enctype="multipart/form-data" style="display:none">
                             @csrf
                             <input type="file" name="avatar" id="avatar-file" accept="image/*">
+                            <input type="hidden" name="avatar_cropped" id="avatar-cropped">
                         </form>
                     </div>
                 </div>
@@ -505,7 +506,130 @@
 
 
     <script>
-        // Popover avatar: tampilkan tombol "Ubah" saja
+        const cropModal = (function(){
+            let overlay;
+            let img;
+            let cv;
+            let ctx;
+            let saveBtn;
+            let cancelBtn;
+            let scaleRange;
+            let dxPan = 0;
+            let dyPan = 0;
+            let scale = 1;
+            let dragging = false;
+            let lastX = 0;
+            let lastY = 0;
+            function ensure(){
+                overlay = document.getElementById('avatar-crop-overlay');
+                if (!overlay){
+                    overlay = document.createElement('div');
+                    overlay.id = 'avatar-crop-overlay';
+                    overlay.style.position = 'fixed';
+                    overlay.style.inset = '0';
+                    overlay.style.background = 'rgba(0,0,0,.5)';
+                    overlay.style.display = 'none';
+                    overlay.style.zIndex = '1000';
+                    const box = document.createElement('div');
+                    box.style.maxWidth = '90vw';
+                    box.style.width = '560px';
+                    box.style.margin = '5vh auto';
+                    box.style.background = '#fff';
+                    box.style.borderRadius = '12px';
+                    box.style.padding = '12px';
+                    box.style.boxShadow = '0 10px 20px rgba(0,0,0,.2)';
+                    const title = document.createElement('div');
+                    title.textContent = 'Crop Avatar';
+                    title.style.fontWeight = '700';
+                    title.style.marginBottom = '8px';
+                    cv = document.createElement('canvas');
+                    cv.width = 512; cv.height = 512;
+                    cv.style.width = '100%';
+                    cv.style.height = 'auto';
+                    ctx = cv.getContext('2d');
+                    const controls = document.createElement('div');
+                    controls.style.display = 'flex';
+                    controls.style.alignItems = 'center';
+                    controls.style.gap = '8px';
+                    controls.style.margin = '8px 0';
+                    const label = document.createElement('span');
+                    label.textContent = 'Zoom';
+                    label.style.fontWeight = '600';
+                    scaleRange = document.createElement('input');
+                    scaleRange.type = 'range';
+                    scaleRange.min = '0.5';
+                    scaleRange.max = '3';
+                    scaleRange.step = '0.01';
+                    scaleRange.value = '1';
+                    scaleRange.style.flex = '1';
+                    const hint = document.createElement('span');
+                    hint.textContent = 'Geser untuk memposisikan';
+                    hint.style.fontSize = '12px';
+                    hint.style.color = '#7b8ca6';
+                    controls.appendChild(label);
+                    controls.appendChild(scaleRange);
+                    controls.appendChild(hint);
+                    const actions = document.createElement('div');
+                    actions.style.display = 'flex';
+                    actions.style.gap = '8px';
+                    actions.style.justifyContent = 'flex-end';
+                    actions.style.marginTop = '10px';
+                    saveBtn = document.createElement('button');
+                    saveBtn.type = 'button';
+                    saveBtn.textContent = 'Simpan';
+                    saveBtn.className = 'btn save';
+                    cancelBtn = document.createElement('button');
+                    cancelBtn.type = 'button';
+                    cancelBtn.textContent = 'Batal';
+                    cancelBtn.className = 'btn cancel';
+                    actions.appendChild(cancelBtn);
+                    actions.appendChild(saveBtn);
+                    box.appendChild(title);
+                    box.appendChild(cv);
+                    box.appendChild(controls);
+                    box.appendChild(actions);
+                    overlay.appendChild(box);
+                    document.body.appendChild(overlay);
+                    cancelBtn.addEventListener('click', function(){ overlay.style.display='none'; });
+                    scaleRange.addEventListener('input', function(){ scale = parseFloat(scaleRange.value || '1'); redraw(); });
+                    cv.addEventListener('pointerdown', function(e){ dragging = true; lastX = e.clientX; lastY = e.clientY; cv.setPointerCapture && cv.setPointerCapture(e.pointerId); });
+                    cv.addEventListener('pointermove', function(e){ if (!dragging) return; const dx = e.clientX - lastX; const dy = e.clientY - lastY; dxPan += dx; dyPan += dy; lastX = e.clientX; lastY = e.clientY; redraw(); });
+                    cv.addEventListener('pointerup', function(){ dragging = false; });
+                    cv.addEventListener('pointerleave', function(){ dragging = false; });
+                }
+            }
+            function redraw(){
+                if (!img) return;
+                const iw = img.naturalWidth;
+                const ih = img.naturalHeight;
+                const s = Math.min(iw, ih);
+                const sx = Math.floor((iw - s) / 2);
+                const sy = Math.floor((ih - s) / 2);
+                const destSize = cv.width * scale;
+                const dx = (cv.width - destSize) / 2 + dxPan;
+                const dy = (cv.height - destSize) / 2 + dyPan;
+                ctx.clearRect(0, 0, cv.width, cv.height);
+                ctx.drawImage(img, sx, sy, s, s, dx, dy, destSize, destSize);
+            }
+            return {
+                open: function(dataUrl, onSave){
+                    ensure();
+                    overlay.style.display='block';
+                    img = new Image();
+                    img.onload = function(){ dxPan = 0; dyPan = 0; scale = 1; scaleRange.value = '1'; redraw(); };
+                    img.src = dataUrl;
+                    saveBtn.onclick = function(){
+                        const out = cv.toDataURL('image/png');
+                        overlay.style.display='none';
+                        onSave && onSave(out);
+                    };
+                }
+            };
+        })();
+        
+        
+        
+        
         const avatar = document.querySelector('.avatar');
         const popover = document.getElementById('avatar-popover');
         if (avatar && popover) {
@@ -518,16 +642,26 @@
             const btnUpload = document.getElementById('btn-avatar-upload');
             const fileInput = document.getElementById('avatar-file');
             const formUpload = document.getElementById('avatar-upload-form');
+            const hiddenCropped = document.getElementById('avatar-cropped');
             if (btnUpload && fileInput && formUpload) {
                 btnUpload.addEventListener('click', () => {
                     fileInput.click();
                 });
                 fileInput.addEventListener('change', () => {
                     if (fileInput.files && fileInput.files.length > 0) {
-                        const overlay = document.getElementById('avatar-loading');
-                        if (overlay) overlay.style.display = 'flex';
-                        formUpload.submit();
-                        popover.classList.remove('active');
+                        const f = fileInput.files[0];
+                        const r = new FileReader();
+                        r.onload = function(){
+                            const dataUrl = r.result;
+                            cropModal.open(dataUrl, function(out){
+                                hiddenCropped.value = out;
+                                const overlay = document.getElementById('avatar-loading');
+                                if (overlay) overlay.style.display = 'flex';
+                                formUpload.submit();
+                                popover.classList.remove('active');
+                            });
+                        };
+                        r.readAsDataURL(f);
                     }
                 });
             }

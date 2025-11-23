@@ -71,6 +71,7 @@ class CleanerController extends Controller
             }
             $photos[(string) $cleaner->id] = $url;
             file_put_contents($file, json_encode($photos));
+            $cleaner->touch();
         }
 
         return redirect()->route('cleaners.index')->with('success', 'Petugas berhasil ditambahkan. Menunggu approval agar menjadi aktif.');
@@ -117,6 +118,7 @@ class CleanerController extends Controller
             }
             $photos[(string) $cleaner->id] = $url;
             file_put_contents($file, json_encode($photos));
+            $cleaner->touch();
         }
 
         return redirect()->route('cleaners.index')->with('success', 'Petugas berhasil diperbarui.');
@@ -160,5 +162,27 @@ class CleanerController extends Controller
         ])->save();
 
         return redirect()->route('cleaners.index')->with('success', 'Petugas berhasil di-reject dan tidak diaktifkan.');
+    }
+
+    public function photo(Cleaner $cleaner)
+    {
+        $file = storage_path('app/cleaner_photos.json');
+        if (! file_exists($file)) {
+            abort(404);
+        }
+        $json = file_get_contents($file);
+        $photos = json_decode($json, true) ?: [];
+        $url = (string) ($photos[(string) $cleaner->id] ?? '');
+        if ($url === '') {
+            abort(404);
+        }
+        $rel = preg_replace('#^/storage/#', '', $url);
+        if ($rel && \Illuminate\Support\Facades\Storage::disk('public')->exists($rel)) {
+            return \Illuminate\Support\Facades\Storage::disk('public')->response($rel);
+        }
+        if (preg_match('#^https?://#i', $url)) {
+            return redirect($url);
+        }
+        abort(404);
     }
 }

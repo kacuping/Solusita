@@ -30,6 +30,32 @@
       if (app) observer.observe(app, { childList: true, subtree: true });
     });
   })();
+  (function(){
+    var overlay = document.createElement('div');
+    overlay.className = 'page-spinner-overlay';
+    var spinner = document.createElement('div');
+    spinner.className = 'page-spinner';
+    overlay.appendChild(spinner);
+    function show(){ overlay.style.display = 'flex'; }
+    function hide(){ overlay.style.display = 'none'; }
+    window.addEventListener('DOMContentLoaded', function(){
+      document.body.appendChild(overlay);
+      hide();
+    });
+    window.addEventListener('pageshow', hide);
+    window.addEventListener('load', hide);
+    window.addEventListener('beforeunload', function(){ show(); });
+    document.addEventListener('click', function(e){
+      var a = e.target.closest ? e.target.closest('a') : null;
+      if (!a) return;
+      var href = a.getAttribute('href') || '';
+      var tgt = a.getAttribute('target') || '_self';
+      if (tgt && tgt !== '_self') return;
+      if (href === '' || href.charAt(0) === '#') return;
+      show();
+    });
+    document.addEventListener('submit', function(){ show(); });
+  })();
 
   // Lightweight notification poller for real-time-ish updates
   (function(){

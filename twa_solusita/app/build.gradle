@@ -266,6 +266,23 @@ task replaceSplashImage {
 }
 preBuild.dependsOn(replaceSplashImage)
 
+// Copy full-size foreground icon for adaptive icon
+task copyForegroundIcon {
+    doLast {
+        def src = file("$projectDir/../solusita.png")
+        def destDir = file("$projectDir/src/main/res/drawable-nodpi")
+        def dest = file("$projectDir/src/main/res/drawable-nodpi/solusita_full.png")
+        if (!src.exists()) {
+            println "[copyForegroundIcon] Source not found: ${src}"
+            return
+        }
+        if (!destDir.exists()) destDir.mkdirs()
+        ant.copy(file: src, tofile: dest, overwrite: true)
+        println "[copyForegroundIcon] Copied: ${dest}"
+    }
+}
+preBuild.dependsOn(copyForegroundIcon)
+
 task bundleSolusitaV2(type: Copy) {
     dependsOn 'bundleRelease'
     from("$buildDir/outputs/bundle/release/app-release.aab")

@@ -881,12 +881,26 @@ Route::prefix('customer')->group(function () {
             $customer = \App\Models\Customer::firstOrCreate(['user_id' => $user->id]);
 
             $validated = $request->validate([
-                'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+                'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+                'avatar_cropped' => 'nullable|string',
             ]);
 
-            if ($request->hasFile('avatar')) {
+            $dataUrl = (string) ($validated['avatar_cropped'] ?? '');
+            if ($dataUrl !== '' && preg_match('#^data:image/(png|jpeg|jpg|webp);base64,#i', $dataUrl)) {
+                $mime = 'png';
+                if (preg_match('#^data:image/(png|jpeg|jpg|webp);#i', $dataUrl, $mm)) {
+                    $mime = strtolower($mm[1]) === 'jpg' ? 'jpeg' : strtolower($mm[1]);
+                }
+                $base64 = preg_replace('#^data:image/(png|jpeg|jpg|webp);base64,#i', '', $dataUrl);
+                $bin = base64_decode($base64);
+                $name = 'avatar_'.($user->id).'_'.time().'.'.$mime;
+                Storage::disk('public')->put('avatars/'.$name, $bin);
+                $url = Storage::url('avatars/'.$name);
+                $customer->avatar = $url;
+                $customer->save();
+            } elseif ($request->hasFile('avatar')) {
                 $path = $request->file('avatar')->store('avatars', 'public');
-                $url = Storage::url($path); // e.g., /storage/avatars/filename.jpg
+                $url = Storage::url($path);
                 $customer->avatar = $url;
                 $customer->save();
             }
@@ -1168,9 +1182,9 @@ Route::middleware('auth')->group(function () {
         'update' => 'cleaners.update',
         'destroy' => 'cleaners.destroy',
     ]);
-    // Approval actions for cleaners
     Route::patch('/cleaners/{cleaner}/approve', [\App\Http\Controllers\CleanerController::class, 'approve'])->name('cleaners.approve');
     Route::patch('/cleaners/{cleaner}/reject', [\App\Http\Controllers\CleanerController::class, 'reject'])->name('cleaners.reject');
+    Route::get('/cleaners/{cleaner}/photo', [\App\Http\Controllers\CleanerController::class, 'photo'])->name('cleaners.photo');
 
     Route::get('/schedule', function (Request $request) {
         $month = $request->string('month') ?: now()->format('Y-m');

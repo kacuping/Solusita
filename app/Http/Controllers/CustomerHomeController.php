@@ -226,7 +226,8 @@ class CustomerHomeController extends Controller
             $json = file_get_contents($file);
             $photos = json_decode($json, true) ?: [];
             foreach ($topCleaners as $c) {
-                $cleanerPhotos[(string) $c->id] = $photos[(string) $c->id] ?? null;
+                $has = (string) ($photos[(string) $c->id] ?? '') !== '';
+                $cleanerPhotos[(string) $c->id] = $has ? route('cleaners.photo', (int) $c->id) : null;
             }
         }
 
