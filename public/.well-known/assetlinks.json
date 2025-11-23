@@ -15,7 +15,10 @@
       "namespace": "android_app",
       "package_name": "com.luasbidang.solusita.twa",
       "sha256_cert_fingerprints": [
-        "EA:5D:E6:F4:79:8B:8C:67:65:D2:50:67:6B:7F:6E:20:19:39:A6:28:79:6F:D8:AA:D6:2B:E6:8D:8E:7D:23:7D"
+        "EA:5D:E6:F4:79:8B:8C:67:65:D2:50:67:6B:7F:6E:20:19:39:A6:28:79:6F:D8:AA:D6:2B:E6:8D:8E:7D:23:7D",
+        "55:68:AF:F2:D6:4D:71:87:8A:A0:BC:63:08:B5:4A:CD:37:74:22:B1:83:83:34:0B:F2:D0:10:E6:19:BA:D8:EA",
+        "CF:E7:A5:A3:B6:85:C1:30:61:B7:61:7F:F1:FC:59:BF:08:00:70:1E:8A:25:E2:36:12:F8:56:78:C8:2F:CB:57",
+        "FF:C9:07:8E:8A:75:BE:4B:5F:56:1F:B3:E4:49:A4:60:9D:75:E2:19:57:D3:05:B0:66:B6:42:7F:4A:30:9B:60"
       ]
     }
   }
