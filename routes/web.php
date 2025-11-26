@@ -559,25 +559,46 @@ Route::prefix('customer')->group(function () {
             ]);
         })->name('customer.payment.detail');
 
+        Route::get('/payment/{booking}/cancel', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
+            $user = auth()->user();
+            $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
+            if ($booking->customer_id !== $customer->id) {
+                abort(404);
+            }
+            $st = strtolower((string) ($booking->status ?? ''));
+            if ($booking->payment_status === 'paid' || $st === 'in_progress') {
+                return redirect()->route('customer.payments.index')->with('error', 'Transaksi tidak dapat dibatalkan.');
+            }
+            $html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Membatalkan...</title></head><body>'
+                .'<form id="cancelForm" method="POST" action="'.route('customer.payment.cancel', ['booking' => $booking->id]).'">'
+                .'<input type="hidden" name="_token" value="'.csrf_token().'">'
+                .'</form>'
+                .'<script>document.getElementById("cancelForm").submit();</script>'
+                .'</body></html>';
+            return response($html, 200)->header('Content-Type', 'text/html');
+        })->name('customer.payment.cancel.get');
+
         Route::post('/payment/{booking}/cancel', function (\App\Models\Booking $booking, \Illuminate\Http\Request $request) {
             $user = auth()->user();
             $customer = \App\Models\Customer::where('user_id', $user->id)->firstOrFail();
             if ($booking->customer_id !== $customer->id) {
                 abort(404);
             }
-            if ($booking->payment_status !== 'paid') {
-                try {
-                    if (method_exists($booking, 'reviews')) {
-                        $booking->reviews()->delete();
-                    }
-                    $booking->delete();
-                } catch (\Throwable $e) {
-                    $booking->status = 'cancelled';
-                    $booking->save();
+            $st = strtolower((string) ($booking->status ?? ''));
+            if ($booking->payment_status === 'paid' || $st === 'in_progress') {
+                return redirect()->route('customer.payments.index')->with('error', 'Transaksi tidak dapat dibatalkan.');
+            }
+            try {
+                if (method_exists($booking, 'reviews')) {
+                    $booking->reviews()->delete();
                 }
+                $booking->delete();
+            } catch (\Throwable $e) {
+                $booking->status = 'cancelled';
+                $booking->save();
             }
 
-            return redirect()->route('customer.home')->with('status', 'Order dibatalkan.');
+            return redirect()->route('customer.payments.index')->with('status', 'Order dibatalkan.');
         })->name('customer.payment.cancel');
 
         // Validate promo and compute discount for UI preview

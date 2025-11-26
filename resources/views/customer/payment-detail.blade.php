@@ -15,6 +15,8 @@
         .row { display:flex; justify-content:space-between; font-size:13.5px; margin-bottom:6px; }
         .muted { color:var(--muted); font-size:12px; }
         .actions { display:flex; gap:8px; margin-top:10px; }
+        .actions form { flex:1; margin:0; }
+        .actions form .btn { width:100%; display:block; }
         .btn { flex:1; display:block; text-align:center; text-decoration:none; padding:10px 12px; border-radius:12px; font-weight:600; }
         .btn-primary { background:#4b88ff; color:#fff; }
         .btn-secondary { background:#e6edff; color:#2a57c4; }
@@ -62,8 +64,9 @@
             <div class="row"><span>Tagihan Saat Ini</span><span>Rp {{ number_format($remain, 0, ',', '.') }}</span></div>
             <div class="actions">
                 @php($st = strtolower((string) ($booking->payment_status ?? 'unpaid')))
-                @if ($st === 'unpaid')
-                    <form method="POST" action="{{ route('customer.payment.cancel', ['booking' => $booking->id]) }}" style="flex:1;">
+                @php($bst = strtolower((string) ($booking->status ?? '')))
+                @if ($st === 'unpaid' && $bst !== 'in_progress')
+                    <form method="POST" action="{{ route('customer.payment.cancel', ['booking' => $booking->id]) }}">
                         @csrf
                         <button type="submit" class="btn btn-danger" onclick="return confirm('Batalkan transaksi ini?');">Batalkan</button>
                     </form>
