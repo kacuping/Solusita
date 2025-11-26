@@ -333,33 +333,39 @@ return [
             ],
         ],
         [
-            'text' => 'Pelanggan',
-            'route' => 'customers.index',
-            'icon' => 'fas fa-fw fa-users',
-        ],
-        [
-            'text' => 'User',
-            'route' => 'users.index',
-            'icon' => 'fas fa-fw fa-user-cog',
-            'can' => 'users.view',
-        ],
-        [
-            'text' => 'Role & Izin',
-            'route' => 'roles.index',
-            'icon' => 'fas fa-fw fa-user-shield',
-            'can' => 'roles.manage',
-        ],
-        [
-            'text' => 'Approval',
-            'route' => 'approvals.index',
-            'icon' => 'fas fa-fw fa-check-circle',
-            'can' => 'approvals.view',
-        ],
-        [
-            'text' => 'Petugas',
-            'route' => 'cleaners.index',
-            'icon' => 'fas fa-fw fa-user-check',
-            'can' => 'cleaners.view',
+            'text' => 'Managemen User',
+            'icon' => 'fas fa-fw fa-users-cog',
+            'submenu' => [
+                [
+                    'text' => 'User',
+                    'route' => 'users.index',
+                    'icon' => 'fas fa-fw fa-user-cog',
+                    'can' => 'users.view',
+                ],
+                [
+                    'text' => 'Role & Izin',
+                    'route' => 'roles.index',
+                    'icon' => 'fas fa-fw fa-user-shield',
+                    'can' => 'roles.manage',
+                ],
+                [
+                    'text' => 'Approval',
+                    'route' => 'approvals.index',
+                    'icon' => 'fas fa-fw fa-check-circle',
+                    'can' => 'approvals.view',
+                ],
+                [
+                    'text' => 'Pelanggan',
+                    'route' => 'customers.index',
+                    'icon' => 'fas fa-fw fa-users',
+                ],
+                [
+                    'text' => 'Petugas',
+                    'route' => 'cleaners.index',
+                    'icon' => 'fas fa-fw fa-user-check',
+                    'can' => 'cleaners.view',
+                ],
+            ],
         ],
         [
             'text' => 'Jadwal',

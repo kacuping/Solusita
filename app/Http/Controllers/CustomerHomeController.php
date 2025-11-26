@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Customer;
 use App\Models\Promotion;
+use App\Models\Popup;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -171,9 +172,10 @@ class CustomerHomeController extends Controller
             }
         }
 
-        // Promo aktif saat ini
-        $activePromotions = Promotion::query()
+        // PopUp aktif saat ini
+        $activePopups = Popup::query()
             ->where('active', true)
+            ->where('enabled', true)
             ->where(function ($q) {
                 $q->whereNull('starts_at')->orWhere('starts_at', '<=', now());
             })
@@ -184,10 +186,31 @@ class CustomerHomeController extends Controller
             ->limit(5)
             ->get();
 
-        // Filter berdasarkan eligibility (segment_rules)
-        $eligiblePromotions = $activePromotions->filter(function ($promo) use ($customer, $totalPastBookings) {
-            return $this->isPromotionEligible($promo, $customer, $totalPastBookings);
-        })->values();
+        $popupPromo = $activePopups->first(function ($p) {
+            return (string) ($p->image_path ?? '') !== '';
+        });
+        $popupEventKey = null;
+        $popupForce = false;
+        $forceFile = storage_path('app/popup_force.json');
+        if (file_exists($forceFile)) {
+            $json = json_decode(file_get_contents($forceFile), true) ?: [];
+            $exp = (int) ($json['expires_at'] ?? 0);
+            $pid = (int) ($json['popup_id'] ?? 0);
+            if ($exp > now()->timestamp && $pid > 0) {
+                $forced = $activePopups->first(function($p) use ($pid){ return (int) $p->id === $pid; });
+                if (! $forced) {
+                    $forced = \App\Models\Popup::find($pid);
+                }
+                if ($forced && (string) ($forced->image_path ?? '') !== '') {
+                    $popupPromo = $forced;
+                    $popupForce = true;
+                    $popupEventKey = 'promo|'.(string) ($forced->id).'|force|'.(string) ($json['updated_at'] ?? now()->timestamp);
+                }
+            }
+        }
+        if (! $popupEventKey && $popupPromo) {
+            $popupEventKey = 'promo|'.(string) ($popupPromo->id).'|'.(string) optional($popupPromo->updated_at)->timestamp;
+        }
 
         $categories = \Illuminate\Support\Facades\Schema::hasTable('service_categories')
             ? \App\Models\ServiceCategory::where('active', true)->orderBy('name')->get()
@@ -238,7 +261,7 @@ class CustomerHomeController extends Controller
                 'totalPastBookings' => $totalPastBookings,
                 'openOrders' => $openOrders,
                 'completedOrders' => $completedOrders,
-                'activePromotions' => $eligiblePromotions,
+                'activePromotions' => collect(),
                 'categories' => $categories,
                 'topCleaners' => $topCleaners,
                 'lastPaid' => $lastPaid ?? null,
@@ -247,6 +270,12 @@ class CustomerHomeController extends Controller
                 'notifEventKey' => $notifEventKey ?? null,
                 'notifDetails' => $notifDetails ?? null,
                 'cleanerPhotos' => $cleanerPhotos,
+                'popupPromo' => $popupPromo,
+                'popupEventKey' => $popupEventKey,
+                'popupMaxPerDay' => (int) optional($popupPromo)->popup_max_per_day,
+                'popupPromoId' => optional($popupPromo)->id,
+                'popupHours' => is_array(optional($popupPromo)->hours) ? optional($popupPromo)->hours : [],
+                'popupForce' => $popupForce,
             ]);
     }
 }

@@ -9,7 +9,7 @@
 @section('content')
     <div class="card">
         <div class="card-body">
-            <form method="POST" action="{{ route('promotions.update', $promotion) }}">
+            <form method="POST" action="{{ route('promotions.update', $promotion) }}" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="form-row">
@@ -24,6 +24,7 @@
                         @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
+
 
                 <div class="form-group">
                     <label for="description">Deskripsi</label>

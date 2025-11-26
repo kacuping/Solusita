@@ -88,5 +88,8 @@
             {{ $promotions->links() }}
         </div>
     </div>
-@stop
 
+    <div class="mt-3">
+        <a href="{{ route('popups.index') }}" class="btn btn-outline-info">Kelola PopUp</a>
+    </div>
+@stop

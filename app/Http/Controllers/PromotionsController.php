@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Promotion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class PromotionsController extends Controller
@@ -51,6 +52,7 @@ class PromotionsController extends Controller
 
         return redirect()->route('promotions.index')->with('success', 'Promo berhasil diperbarui.');
     }
+
 
     public function destroy(Promotion $promotion)
     {

@@ -1422,7 +1422,16 @@ Route::middleware('auth')->group(function () {
         'edit' => 'promotions.edit',
         'update' => 'promotions.update',
         'destroy' => 'promotions.destroy',
-    ])->except(['show']);
+    ]);
+    Route::resource('popups', \App\Http\Controllers\PopupsController::class)->names([
+        'index' => 'popups.index',
+        'create' => 'popups.create',
+        'store' => 'popups.store',
+        'edit' => 'popups.edit',
+        'update' => 'popups.update',
+        'destroy' => 'popups.destroy',
+    ]);
+    Route::post('/popups/{popup}/force', [\App\Http\Controllers\PopupsController::class, 'force'])->name('popups.force');
 
     // Reviews listing & moderation
     Route::get('/reviews', [\App\Http\Controllers\ReviewController::class, 'index'])->name('reviews.index');
@@ -1440,12 +1449,24 @@ Route::middleware('auth')->group(function () {
     Route::delete('/support/{ticket}/attach/{attachmentId}', [\App\Http\Controllers\TicketController::class, 'destroyAttachment'])->name('support.attach.delete');
 
     Route::get('/settings', function () {
-        $settings = session('settings', [
+        $defaults = [
             'company_name' => 'Solusita',
             'service_area' => 'Bekasi & Sekitar',
             'notify_email' => 'admin@solusita.local',
             'enable_notifications' => true,
-        ]);
+        ];
+        $settingsFile = storage_path('app/settings.json');
+        $settings = $defaults;
+        if (file_exists($settingsFile)) {
+            $json = file_get_contents($settingsFile);
+            $loaded = json_decode($json, true) ?: [];
+            $settings = array_merge($defaults, is_array($loaded) ? $loaded : []);
+        } else {
+            $sess = session('settings');
+            if (is_array($sess)) {
+                $settings = array_merge($defaults, $sess);
+            }
+        }
         $file = storage_path('app/payment_options.json');
         $paymentOptions = [];
         if (file_exists($file)) {
@@ -1465,6 +1486,8 @@ Route::middleware('auth')->group(function () {
         ]);
         $data['enable_notifications'] = $request->boolean('enable_notifications');
         session(['settings' => $data]);
+        $settingsFile = storage_path('app/settings.json');
+        file_put_contents($settingsFile, json_encode($data, JSON_PRETTY_PRINT));
 
         return back()->with('status', 'Pengaturan disimpan.');
     })->name('settings.save');

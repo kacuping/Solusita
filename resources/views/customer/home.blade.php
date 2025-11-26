@@ -628,6 +628,14 @@
             @include('customer.partials.bottom-nav')
         </div>
     </div>
+    @if (!empty($popupPromo))
+    <div id="promoOverlay" style="position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:1000;">
+        <div style="position:relative; background:#fff; border-radius:14px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:12px; max-width:92vw; max-height:75vh; display:flex; align-items:center; justify-content:center;">
+            <button type="button" id="promoClose" aria-label="Tutup" style="position:absolute; top:8px; right:8px; border:none; background:#fff; color:#333; width:28px; height:28px; border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,.12);">×</button>
+            <img src="/{{ $popupPromo->image_path }}" alt="Promo" style="max-width:88vw; max-height:68vh; object-fit:contain; border-radius:10px;">
+        </div>
+    </div>
+    @endif
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js', {
@@ -697,6 +705,58 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') hide();
         });
+    })();
+
+    (function(){
+        var overlay = document.getElementById('promoOverlay');
+        var closeBtn = document.getElementById('promoClose');
+        var key = {{ json_encode($popupEventKey ?? '') }};
+        var maxPerDay = {{ json_encode($popupMaxPerDay ?? 1) }};
+        var promoId = {{ json_encode($popupPromoId ?? null) }};
+        var hours = {{ json_encode($popupHours ?? []) }};
+        var force = {{ json_encode($popupForce ?? false) }};
+        function getCountKey(){
+            var d = new Date();
+            var day = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+            return 'promoImageCount|' + String(promoId || '') + '|' + day;
+        }
+        function getCount(){
+            var k = getCountKey();
+            var v = localStorage.getItem(k);
+            var n = parseInt(v || '0', 10);
+            return isNaN(n) ? 0 : n;
+        }
+        function incCount(){
+            var k = getCountKey();
+            var n = getCount() + 1;
+            localStorage.setItem(k, String(n));
+        }
+        function open(){ if(overlay){ overlay.style.display = 'flex'; } }
+        function close(){ if(overlay){ overlay.style.display = 'none'; } if(key){ localStorage.setItem('promoImageSeen', key); } }
+        if(overlay && key){
+            var seen = (localStorage.getItem('promoImageSeen') === key);
+            var cnt = getCount();
+            var now = new Date();
+            var hh = String(now.getHours()).padStart(2,'0');
+            var mm = String(now.getMinutes()).padStart(2,'0');
+            var hhmm = hh+':' + mm;
+            var ok = !hours || hours.length === 0;
+            if (!ok) {
+                for (var i=0; i<hours.length; i++) {
+                    var s = String(hours[i] || '').trim();
+                    if (s === hh || s === hhmm) { ok = true; break; }
+                }
+            }
+            var shouldOpen = false;
+            if (force) {
+                shouldOpen = true;
+            } else if (!seen && ok && (cnt < (parseInt(maxPerDay || 1,10) || 1))) {
+                shouldOpen = true;
+            }
+            if (shouldOpen) { open(); if(!force) incCount(); }
+            if(closeBtn){ closeBtn.addEventListener('click', function(e){ e.stopPropagation(); close(); }); }
+            overlay.addEventListener('click', function(){ close(); });
+        }
     })();
 </script>
 
