@@ -80,6 +80,10 @@
             justify-content: space-between;
         }
 
+        .brand-logo {
+            height: 80px;
+        }
+
         .greet-text {
             display: flex;
             flex-direction: column;
@@ -484,14 +488,7 @@
                     <div id="greetLabel">{{ $greet }}</div>
                     <div id="greetName">{{ $userName }}</div>
                 </div>
-                <span id="notifBell" class="notif-bell" aria-label="Notifikasi">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="notif-dot"></span>
-                </span>
-            </div>
-            <div class="search">
-                <span style="margin-right:8px; color:#9aa6c2">🔍</span>
-                <input type="text" placeholder="Cari layanan, jadwal, promo" />
+                <img src="/icons/pic.png" class="brand-logo" alt="SolusiTa" />
             </div>
         </div>
         <!-- Wave dihapus agar bentuk mengikuti header profil yang ber-radius bawah -->
@@ -629,12 +626,16 @@
         </div>
     </div>
     @if (!empty($popupPromo))
-    <div id="promoOverlay" style="position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:1000;">
-        <div style="position:relative; background:#fff; border-radius:14px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:12px; max-width:92vw; max-height:75vh; display:flex; align-items:center; justify-content:center;">
-            <button type="button" id="promoClose" aria-label="Tutup" style="position:absolute; top:8px; right:8px; border:none; background:#fff; color:#333; width:28px; height:28px; border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,.12);">×</button>
-            <img src="/{{ $popupPromo->image_path }}" alt="Promo" style="max-width:88vw; max-height:68vh; object-fit:contain; border-radius:10px;">
+        <div id="promoOverlay"
+            style="position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:1000;">
+            <div
+                style="position:relative; background:#fff; border-radius:14px; box-shadow:0 12px 24px rgba(0,0,0,.18); padding:12px; max-width:92vw; max-height:75vh; display:flex; align-items:center; justify-content:center;">
+                <button type="button" id="promoClose" aria-label="Tutup"
+                    style="position:absolute; top:8px; right:8px; border:none; background:#fff; color:#333; width:28px; height:28px; border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,.12);">×</button>
+                <img src="/{{ $popupPromo->image_path }}" alt="Promo"
+                    style="max-width:88vw; max-height:68vh; object-fit:contain; border-radius:10px;">
+            </div>
         </div>
-    </div>
     @endif
     <script>
         if ('serviceWorker' in navigator) {
@@ -707,7 +708,7 @@
         });
     })();
 
-    (function(){
+    (function() {
         var overlay = document.getElementById('promoOverlay');
         var closeBtn = document.getElementById('promoClose');
         var key = {{ json_encode($popupEventKey ?? '') }};
@@ -715,47 +716,77 @@
         var promoId = {{ json_encode($popupPromoId ?? null) }};
         var hours = {{ json_encode($popupHours ?? []) }};
         var force = {{ json_encode($popupForce ?? false) }};
-        function getCountKey(){
+
+        function getCountKey() {
             var d = new Date();
-            var day = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+            var day = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate())
+                .padStart(2, '0');
             return 'promoImageCount|' + String(promoId || '') + '|' + day;
         }
-        function getCount(){
+
+        function getCount() {
             var k = getCountKey();
             var v = localStorage.getItem(k);
             var n = parseInt(v || '0', 10);
             return isNaN(n) ? 0 : n;
         }
-        function incCount(){
+
+        function incCount() {
             var k = getCountKey();
             var n = getCount() + 1;
             localStorage.setItem(k, String(n));
         }
-        function open(){ if(overlay){ overlay.style.display = 'flex'; } }
-        function close(){ if(overlay){ overlay.style.display = 'none'; } if(key){ localStorage.setItem('promoImageSeen', key); } }
-        if(overlay && key){
+
+        function open() {
+            if (overlay) {
+                overlay.style.display = 'flex';
+            }
+        }
+
+        function close() {
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+            if (key) {
+                localStorage.setItem('promoImageSeen', key);
+            }
+        }
+        if (overlay && key) {
             var seen = (localStorage.getItem('promoImageSeen') === key);
             var cnt = getCount();
             var now = new Date();
-            var hh = String(now.getHours()).padStart(2,'0');
-            var mm = String(now.getMinutes()).padStart(2,'0');
-            var hhmm = hh+':' + mm;
+            var hh = String(now.getHours()).padStart(2, '0');
+            var mm = String(now.getMinutes()).padStart(2, '0');
+            var hhmm = hh + ':' + mm;
             var ok = !hours || hours.length === 0;
             if (!ok) {
-                for (var i=0; i<hours.length; i++) {
+                for (var i = 0; i < hours.length; i++) {
                     var s = String(hours[i] || '').trim();
-                    if (s === hh || s === hhmm) { ok = true; break; }
+                    if (s === hh || s === hhmm) {
+                        ok = true;
+                        break;
+                    }
                 }
             }
             var shouldOpen = false;
             if (force) {
                 shouldOpen = true;
-            } else if (!seen && ok && (cnt < (parseInt(maxPerDay || 1,10) || 1))) {
+            } else if (!seen && ok && (cnt < (parseInt(maxPerDay || 1, 10) || 1))) {
                 shouldOpen = true;
             }
-            if (shouldOpen) { open(); if(!force) incCount(); }
-            if(closeBtn){ closeBtn.addEventListener('click', function(e){ e.stopPropagation(); close(); }); }
-            overlay.addEventListener('click', function(){ close(); });
+            if (shouldOpen) {
+                open();
+                if (!force) incCount();
+            }
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    close();
+                });
+            }
+            overlay.addEventListener('click', function() {
+                close();
+            });
         }
     })();
 </script>
