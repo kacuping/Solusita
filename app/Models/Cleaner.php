@@ -18,6 +18,7 @@ class Cleaner extends Model
         'bank_account_number',
         'bank_name',
         'bank_account_name',
+        'password',
         'status',
         'active',
     ];

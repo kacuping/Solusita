@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cleaner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Hash;
 
 class CleanerController extends Controller
 {
@@ -45,18 +46,22 @@ class CleanerController extends Controller
             'bank_name' => ['nullable', 'string', 'max:100'],
             'bank_account_name' => ['nullable', 'string', 'max:255'],
             'photo' => ['nullable', 'image', 'max:4096'],
+            'password' => ['required', 'string', 'min:8'],
         ]);
 
         $data = $validated;
         if (Schema::hasColumn('cleaners', 'name')) {
             $data['name'] = $validated['full_name'] ?? null;
         }
-        $data['status'] = 'pending';
-        $data['active'] = false;
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->input('password'));
+        }
 
         $filtered = collect($data)->filter(function ($v, $k) {
             return Schema::hasColumn('cleaners', $k);
         })->all();
+
+        
 
         $cleaner = Cleaner::create($filtered);
 
@@ -74,7 +79,7 @@ class CleanerController extends Controller
             $cleaner->touch();
         }
 
-        return redirect()->route('cleaners.index')->with('success', 'Petugas berhasil ditambahkan. Menunggu approval agar menjadi aktif.');
+        return redirect()->route('cleaners.index')->with('success', 'Petugas berhasil ditambahkan.');
     }
 
     public function edit(Cleaner $cleaner)
@@ -94,6 +99,7 @@ class CleanerController extends Controller
             'bank_name' => ['nullable', 'string', 'max:100'],
             'bank_account_name' => ['nullable', 'string', 'max:255'],
             'photo' => ['nullable', 'image', 'max:4096'],
+            'password' => ['nullable', 'string', 'min:8'],
         ]);
 
         $data = $validated;
@@ -104,6 +110,10 @@ class CleanerController extends Controller
         $filtered = collect($data)->filter(function ($v, $k) {
             return Schema::hasColumn('cleaners', $k);
         })->all();
+
+        if ($request->filled('password') && Schema::hasColumn('cleaners', 'password')) {
+            $filtered['password'] = Hash::make($request->input('password'));
+        }
 
         $cleaner->update($filtered);
 

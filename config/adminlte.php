@@ -348,12 +348,7 @@ return [
                     'icon' => 'fas fa-fw fa-user-shield',
                     'can' => 'roles.manage',
                 ],
-                [
-                    'text' => 'Approval',
-                    'route' => 'approvals.index',
-                    'icon' => 'fas fa-fw fa-check-circle',
-                    'can' => 'approvals.view',
-                ],
+                
                 [
                     'text' => 'Pelanggan',
                     'route' => 'customers.index',

@@ -36,18 +36,19 @@ class CustomerAuthController extends Controller
 
         $request->session()->regenerate();
 
-        // Pastikan hanya akun dengan role "customer" yang bisa masuk dari halaman ini
         $user = Auth::user();
-        if (! $user || $user->role !== 'customer') {
-            Auth::logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return back()->withErrors([
-                'email' => __('Akun ini bukan pelanggan. Silakan gunakan halaman login yang sesuai.'),
-            ])->onlyInput('email');
+        if ($user && ($user->role === 'administrator' || $user->role === 'admin')) {
+            return redirect()->route('customer.admin.home');
+        }
+        if ($user && $user->role === 'customer') {
+            return redirect()->route('customer.home');
         }
 
-        return redirect()->route('customer.home');
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return back()->withErrors([
+            'email' => __('Akun ini tidak memiliki akses pada halaman ini.'),
+        ])->onlyInput('email');
     }
 }

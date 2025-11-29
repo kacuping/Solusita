@@ -84,6 +84,25 @@ Route::prefix('customer')->group(function () {
     Route::get('/register', [CustomerRegistrationController::class, 'create'])->middleware('guest')->name('customer.register');
     Route::post('/register', [CustomerRegistrationController::class, 'store'])->middleware('guest')->name('customer.register.store');
 
+    // Halaman khusus admin yang login via customer login
+    Route::middleware(['auth','verified'])->get('/admin/home', function () {
+        return view('customer.admin-home');
+    })->name('customer.admin.home');
+
+    Route::middleware(['auth','verified'])->get('/admin/notifications', function(){
+        $user = auth()->user();
+        if (! $user || ! in_array(($user->role ?? ''), ['administrator','admin'], true)) {
+            return response()->json(['ok' => false], 403);
+        }
+        $lastOrderAt = optional(\App\Models\Booking::orderByDesc('created_at')->value('created_at'));
+        $pending = \App\Models\Booking::whereIn('status', ['pending','scheduled','in_progress'])->count();
+        return response()->json([
+            'ok' => true,
+            'last_order_at' => $lastOrderAt ? $lastOrderAt->toIso8601String() : null,
+            'open_orders' => (int) $pending,
+        ]);
+    })->name('admin.notifications');
+
     // Grup halaman pelanggan terproteksi dengan middleware khusus role 'customer'
     Route::middleware(['auth', 'verified', 'customer'])->group(function () {
         Route::get('/home', [CustomerHomeController::class, 'index'])->name('customer.home');
@@ -1272,8 +1291,7 @@ Route::middleware('auth')->group(function () {
         'update' => 'cleaners.update',
         'destroy' => 'cleaners.destroy',
     ]);
-    Route::patch('/cleaners/{cleaner}/approve', [\App\Http\Controllers\CleanerController::class, 'approve'])->name('cleaners.approve');
-    Route::patch('/cleaners/{cleaner}/reject', [\App\Http\Controllers\CleanerController::class, 'reject'])->name('cleaners.reject');
+    
     Route::get('/cleaners/{cleaner}/photo', [\App\Http\Controllers\CleanerController::class, 'photo'])->name('cleaners.photo');
 
     Route::get('/schedule', function (Request $request) {
@@ -1668,10 +1686,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/users/{user}/permissions', [\App\Http\Controllers\UserPermissionController::class, 'update'])->name('users.permissions.update');
 
     // Approval (persetujuan verifikasi user)
-    Route::get('/approvals', [\App\Http\Controllers\ApprovalController::class, 'index'])->name('approvals.index');
-    Route::post('/approvals/users/{user}/approve', [\App\Http\Controllers\ApprovalController::class, 'approve'])->name('approvals.users.approve');
-    // Approval (petugas) via halaman approvals
-    Route::post('/approvals/cleaners/{cleaner}/approve', [\App\Http\Controllers\ApprovalController::class, 'approveCleaner'])->name('approvals.cleaners.approve');
+    
 });
 
 require __DIR__.'/auth.php';
