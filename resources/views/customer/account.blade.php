@@ -168,7 +168,7 @@
         }
 
         .content {
-            padding: 34px 18px 24px;
+            padding: 34px 18px calc(100px + env(safe-area-inset-bottom, 0));
             flex: 1;
         }
 
@@ -506,7 +506,7 @@
 
 
     <script>
-        const cropModal = (function(){
+        const cropModal = (function() {
             let overlay;
             let img;
             let cv;
@@ -520,9 +520,10 @@
             let dragging = false;
             let lastX = 0;
             let lastY = 0;
-            function ensure(){
+
+            function ensure() {
                 overlay = document.getElementById('avatar-crop-overlay');
-                if (!overlay){
+                if (!overlay) {
                     overlay = document.createElement('div');
                     overlay.id = 'avatar-crop-overlay';
                     overlay.style.position = 'fixed';
@@ -543,7 +544,8 @@
                     title.style.fontWeight = '700';
                     title.style.marginBottom = '8px';
                     cv = document.createElement('canvas');
-                    cv.width = 512; cv.height = 512;
+                    cv.width = 512;
+                    cv.height = 512;
                     cv.style.width = '100%';
                     cv.style.height = 'auto';
                     ctx = cv.getContext('2d');
@@ -590,15 +592,39 @@
                     box.appendChild(actions);
                     overlay.appendChild(box);
                     document.body.appendChild(overlay);
-                    cancelBtn.addEventListener('click', function(){ overlay.style.display='none'; });
-                    scaleRange.addEventListener('input', function(){ scale = parseFloat(scaleRange.value || '1'); redraw(); });
-                    cv.addEventListener('pointerdown', function(e){ dragging = true; lastX = e.clientX; lastY = e.clientY; cv.setPointerCapture && cv.setPointerCapture(e.pointerId); });
-                    cv.addEventListener('pointermove', function(e){ if (!dragging) return; const dx = e.clientX - lastX; const dy = e.clientY - lastY; dxPan += dx; dyPan += dy; lastX = e.clientX; lastY = e.clientY; redraw(); });
-                    cv.addEventListener('pointerup', function(){ dragging = false; });
-                    cv.addEventListener('pointerleave', function(){ dragging = false; });
+                    cancelBtn.addEventListener('click', function() {
+                        overlay.style.display = 'none';
+                    });
+                    scaleRange.addEventListener('input', function() {
+                        scale = parseFloat(scaleRange.value || '1');
+                        redraw();
+                    });
+                    cv.addEventListener('pointerdown', function(e) {
+                        dragging = true;
+                        lastX = e.clientX;
+                        lastY = e.clientY;
+                        cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
+                    });
+                    cv.addEventListener('pointermove', function(e) {
+                        if (!dragging) return;
+                        const dx = e.clientX - lastX;
+                        const dy = e.clientY - lastY;
+                        dxPan += dx;
+                        dyPan += dy;
+                        lastX = e.clientX;
+                        lastY = e.clientY;
+                        redraw();
+                    });
+                    cv.addEventListener('pointerup', function() {
+                        dragging = false;
+                    });
+                    cv.addEventListener('pointerleave', function() {
+                        dragging = false;
+                    });
                 }
             }
-            function redraw(){
+
+            function redraw() {
                 if (!img) return;
                 const iw = img.naturalWidth;
                 const ih = img.naturalHeight;
@@ -612,24 +638,30 @@
                 ctx.drawImage(img, sx, sy, s, s, dx, dy, destSize, destSize);
             }
             return {
-                open: function(dataUrl, onSave){
+                open: function(dataUrl, onSave) {
                     ensure();
-                    overlay.style.display='block';
+                    overlay.style.display = 'block';
                     img = new Image();
-                    img.onload = function(){ dxPan = 0; dyPan = 0; scale = 1; scaleRange.value = '1'; redraw(); };
+                    img.onload = function() {
+                        dxPan = 0;
+                        dyPan = 0;
+                        scale = 1;
+                        scaleRange.value = '1';
+                        redraw();
+                    };
                     img.src = dataUrl;
-                    saveBtn.onclick = function(){
+                    saveBtn.onclick = function() {
                         const out = cv.toDataURL('image/png');
-                        overlay.style.display='none';
+                        overlay.style.display = 'none';
                         onSave && onSave(out);
                     };
                 }
             };
         })();
-        
-        
-        
-        
+
+
+
+
         const avatar = document.querySelector('.avatar');
         const popover = document.getElementById('avatar-popover');
         if (avatar && popover) {
@@ -651,9 +683,9 @@
                     if (fileInput.files && fileInput.files.length > 0) {
                         const f = fileInput.files[0];
                         const r = new FileReader();
-                        r.onload = function(){
+                        r.onload = function() {
                             const dataUrl = r.result;
-                            cropModal.open(dataUrl, function(out){
+                            cropModal.open(dataUrl, function(out) {
                                 hiddenCropped.value = out;
                                 const overlay = document.getElementById('avatar-loading');
                                 if (overlay) overlay.style.display = 'flex';
