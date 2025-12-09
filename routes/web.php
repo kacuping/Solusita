@@ -77,6 +77,9 @@ Route::get('/icons/pwa/{size}.png', function ($size) {
 });
 
 // Halaman login & registrasi khusus pelanggan (mobile-friendly)
+Route::get('/customers/login', function () {
+    return redirect()->route('customer.login');
+});
 Route::prefix('customer')->group(function () {
     Route::get('/login', [CustomerAuthController::class, 'create'])->middleware('guest')->name('customer.login');
     Route::post('/login', [CustomerAuthController::class, 'store'])->middleware('guest')->name('customer.login.store');
